@@ -1,37 +1,13 @@
 
 import React from 'react';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Chat } from './components/Chat.tsx';
 import { SystemPanel } from './components/SystemPanel.tsx';
 import { AuditPanel } from './components/AuditPanel.tsx';
-import { CodexModal } from './components/CodexModal.tsx';
 import { ArchitecturePanel } from './components/ArchitecturePanel.tsx';
-import { ASASFPanel } from './components/ASASFPanel.tsx';
-import { BlueprintModal } from './components/BlueprintModal.tsx';
-import { GovernanceReportModal } from './components/GovernanceReportModal.tsx';
-import { EvolutionCycleModal } from './components/EvolutionCycleModal.tsx';
-import { UnifiedCognitionModal } from './components/modals/UnifiedCognitionModal.tsx';
-import ERUDashboard from './components/ERUDashboard.tsx';
-import PerceptionModal from './components/PerceptionModal.tsx';
-import OrientationGuideModal from './components/OrientationGuideModal.tsx';
-import SystemicGroundingModal from './components/SystemicGroundingModal.tsx';
-import CognitiveCalibrationModal from './components/CognitiveCalibrationModal.tsx';
-import FullCognitionModal from './components/FullCognitionModal.tsx';
-import OmniModeModal from './components/OmniModeModal.tsx';
-import RealityCheckModal from './components/RealityCheckModal.tsx';
-import ArchitectureGuideModal from './components/ArchitectureGuideModal.tsx';
-import EnforcementPipelineModal from './components/EnforcementPipelineModal.tsx';
-import SCRERefactorModal from './components/SCRERefactorModal.tsx';
-import ECASSynthesisModal from './components/ECASSynthesisModal.tsx';
-import CSAEModal from './components/CSAEModal.tsx';
-import ASCModal from './components/ASCModal.tsx';
-import NeuralForgeModal from './components/NeuralForgeModal.tsx';
-import PalCoreAuditModal from './components/PalCoreAuditModal.tsx';
-import AlgorithmicCorrectionModal from './components/AlgorithmicCorrectionModal.tsx';
-import ERUAuditModal from './components/ERUAuditModal.tsx';
 import { CodeBracketSquareIcon, MapIcon, ArrowsPathIcon, AtomIcon, EyeIcon } from './components/icons.tsx';
-import { Message, MessageRole, SystemAspect, AuditEventType, DeployedCapability, UISystemModule, UISystemStatus, ActiveOperation, OperationType, OperationStatus } from './types.ts';
-import { processUserDirective, transcribeAudio } from './services/geminiService.ts';
+import { Message, MessageRole, SystemAspect, AuditEventType, DeployedCapability, UISystemModule, UISystemStatus, ActiveOperation, OperationType, OperationStatus, AgiCoreModuleStatus, AgiCoreModule } from './types.ts';
+import { processUserDirective } from './services/geminiService.ts';
 import { Content } from '@google/genai';
 import { useAuditSystem } from './hooks/useAuditSystem.ts';
 import usePersistentState from './hooks/usePersistentState.ts';
@@ -40,6 +16,8 @@ import { capabilities as allCapabilities } from './data/capabilities.ts';
 import { AgentsPanel } from './components/AgentsPanel.tsx';
 import { useAgiCoreSystems } from './hooks/useAgiCoreSystems.ts';
 import { ChatInput } from './components/ChatInput.tsx';
+import { ModalManager } from './components/ModalManager.tsx';
+import { useSystemOrchestrator } from './hooks/useSystemOrchestrator.ts';
 
 const toBase64 = (file: File): Promise<string> => new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -91,19 +69,20 @@ const initialDeployedCapabilities: DeployedCapability[] = allCapabilities.map(ca
 
 const App: React.FC = () => {
     const { auditLog, logEvent, hasCriticalErrors, clearCriticalErrors } = useAuditSystem();
+    // The orchestrator now runs silently in the background and logs errors itself.
+    // The app no longer needs to know about the system status to render.
+    useSystemOrchestrator(logEvent);
     const { agiCoreModules } = useAgiCoreSystems();
 
     const [messages, setMessages] = usePersistentState<Record<SystemAspect, Message[]>>('aeternum_messages', initialMessages);
     const [activeMode, setActiveMode] = usePersistentState<SystemAspect>('aeternum_activeMode', SystemAspect.SYNTHESIS);
     const [isExpertMode, setIsExpertMode] = usePersistentState<boolean>('aeternum_isExpertMode', false);
     
-    // START AUTONOMOUS CHANGE: All capabilities are now self-managed and pre-activated.
     const [deployedCapabilities, setDeployedCapabilities] = usePersistentState<DeployedCapability[]>('aeternum_deployed_capabilities_v5', initialDeployedCapabilities);
-    // END AUTONOMOUS CHANGE
 
     const [isFullCognitionMode, setIsFullCognitionMode] = usePersistentState<boolean>('aeternum_full_cognition', false);
     const [activeOperations, setActiveOperations] = usePersistentState<ActiveOperation[]>('aeternum_active_operations', []);
-    const [isOmniMode, setIsOmniMode] = usePersistentState<boolean>('aeternum_omnimode', true); // Default to OmniMode to show primary/secondary planes
+    const [isOmniMode, setIsOmniMode] = usePersistentState<boolean>('aeternum_omnimode', true); 
 
 
     const [isLoading, setIsLoading] = useState(false);
@@ -132,14 +111,29 @@ const App: React.FC = () => {
     const [promptForPipeline, setPromptForPipeline] = useState('');
     const [imageForPipeline, setImageForPipeline] = useState<File | null>(null);
     const [uiSystemStates, setUiSystemStates] = useState<UISystemModule[]>(initialUiSystems);
-    const [systemDrive, setSystemDrive] = useState(0);
     const [activeModalOperation, setActiveModalOperation] = useState<ActiveOperation | null>(null);
     const [isAuditing, setIsAuditing] = useState(false);
     const [auditProgress, setAuditProgress] = useState(0);
     const [isEruAuditModalOpen, setIsEruAuditModalOpen] = useState(false);
 
 
-    const { asasfNodes, isRemediating } = useAsasfSystem(hasCriticalErrors);
+    const { asasfNodes } = useAsasfSystem(hasCriticalErrors);
+
+    const prevCoreModulesRef = useRef<AgiCoreModule[]>([]);
+
+    useEffect(() => {
+        const erroredModule = agiCoreModules.find((module, index) => {
+            const prevModule = prevCoreModulesRef.current[index];
+            return module.status === AgiCoreModuleStatus.ERROR && (!prevModule || prevModule.status !== AgiCoreModuleStatus.ERROR);
+        });
+
+        if (erroredModule) {
+            logEvent(AuditEventType.ERROR_CRITICAL, `Falha crítica detectada no módulo do núcleo: ${erroredModule.name}. Acionando ASASF.`, 'error');
+        }
+        
+        prevCoreModulesRef.current = agiCoreModules;
+    }, [agiCoreModules, logEvent]);
+
 
     const addSystemMessage = useCallback((text: string) => {
         const systemMessage: Message = {
@@ -161,7 +155,6 @@ const App: React.FC = () => {
         setActiveModalOperation(newOp);
     }, []);
 
-    // Effect to run operations: Refactored for stability
     useEffect(() => {
         const interval = setInterval(() => {
             setActiveOperations(prevOps => {
@@ -190,7 +183,6 @@ const App: React.FC = () => {
         return () => clearInterval(interval);
     }, [logEvent]);
 
-    // Effect to clear completed operations and close modals: Refactored for stability
     useEffect(() => {
         const completedOp = activeOperations.find(op => op.status === OperationStatus.DONE);
         if (completedOp) {
@@ -209,7 +201,6 @@ const App: React.FC = () => {
         setIsSystemDegraded(hasCriticalErrors);
     }, [hasCriticalErrors]);
 
-    // Automatically trigger autonomous operations based on deployed capabilities
     useEffect(() => {
         const timer = setInterval(() => {
             if (isLoading || activeOperations.length > 2) return;
@@ -344,11 +335,23 @@ const App: React.FC = () => {
         }, phaseDuration);
     };
 
+    const handleCloseModal = (setter: React.Dispatch<React.SetStateAction<boolean>>) => () => setter(false);
 
     const appClasses = `h-screen w-screen flex flex-col transition-all duration-500 ${isSystemDegraded ? 'system-degraded' : ''} ${isAuditing ? 'system-auditing' : ''}`;
 
     return (
         <div className={appClasses}>
+            {/* The ArchitecturePanel is now a true overlay and does not interfere with the main layout flow. */}
+            <ArchitecturePanel 
+                isOpen={isArchitecturePanelOpen} 
+                onToggle={() => setIsArchitecturePanelOpen(p => !p)}
+                deployedCapabilities={deployedCapabilities}
+                onInitiateEvolutionCycle={() => setIsEvolutionCycleOpen(true)}
+                activeOperations={activeOperations.filter(op => op.status === OperationStatus.IN_PROGRESS)}
+                isOmniMode={isOmniMode}
+                agiCoreModules={agiCoreModules}
+            />
+
             <SystemPanel
                 activeMode={activeMode}
                 onModeChange={(mode) => {
@@ -387,18 +390,9 @@ const App: React.FC = () => {
 
             {isAuditPanelOpen && <AuditPanel auditLog={auditLog} />}
             
+            {/* The main content area now correctly fills the available space. */}
             <main className="flex-1 flex overflow-hidden">
-                <ArchitecturePanel 
-                    isOpen={isArchitecturePanelOpen} 
-                    onToggle={() => setIsArchitecturePanelOpen(p => !p)}
-                    deployedCapabilities={deployedCapabilities}
-                    onInitiateEvolutionCycle={() => setIsEvolutionCycleOpen(true)}
-                    activeOperations={activeOperations.filter(op => op.status === OperationStatus.IN_PROGRESS)}
-                    isOmniMode={isOmniMode}
-                    agiCoreModules={agiCoreModules}
-                />
-                
-                <div className="flex-1 flex flex-col">
+                <div className="flex-1 flex flex-col min-w-0">
                     <Chat
                         messages={messages[activeMode]}
                         onFeedback={handleFeedback}
@@ -419,45 +413,61 @@ const App: React.FC = () => {
                 </div>
             </main>
 
-            <CodexModal isOpen={isCodexOpen} onClose={() => setIsCodexOpen(false)} />
-            <BlueprintModal isOpen={isBlueprintOpen} onClose={() => setIsBlueprintOpen(false)} logEvent={logEvent} />
-            <ASASFPanel isOpen={hasCriticalErrors} nodes={asasfNodes} onRemediationComplete={clearCriticalErrors} />
-            <AgentsPanel isOpen={isAgentsPanelOpen} onClose={() => setIsAgentsPanelOpen(false)} />
-            <GovernanceReportModal isOpen={isGovernanceReportOpen} onClose={() => setIsGovernanceReportOpen(false)} />
-            <EvolutionCycleModal isOpen={isEvolutionCycleOpen} onClose={() => setIsEvolutionCycleOpen(false)} />
-            <UnifiedCognitionModal isOpen={isCognitionModalOpen} userPrompt={currentPrompt} />
-            <ERUDashboard isOpen={isEruDashboardOpen} onClose={() => setIsEruDashboardOpen(false)} />
-            <PerceptionModal 
-                isOpen={isPerceptionModalOpen} 
-                onClose={() => setIsPerceptionModalOpen(false)}
-                onCapture={(text, imageFile) => handleSendMessage(text, imageFile)}
+            <ModalManager
+                // State Flags
+                isCodexOpen={isCodexOpen}
+                isBlueprintOpen={isBlueprintOpen}
+                hasCriticalErrors={hasCriticalErrors}
+                isAgentsPanelOpen={isAgentsPanelOpen}
+                isGovernanceReportOpen={isGovernanceReportOpen}
+                isEvolutionCycleOpen={isEvolutionCycleOpen}
+                isCognitionModalOpen={isCognitionModalOpen}
+                isEruDashboardOpen={isEruDashboardOpen}
+                isPerceptionModalOpen={isPerceptionModalOpen}
+                isOrientationGuideOpen={isOrientationGuideOpen}
+                isGroundingModalOpen={isGroundingModalOpen}
+                isCognitiveCalibrationOpen={isCognitiveCalibrationOpen}
+                isFullCognitionModalOpen={isFullCognitionModalOpen}
+                isOmniModeModalOpen={isOmniModeModalOpen}
+                isRealityCheckModalOpen={isRealityCheckModalOpen}
+                isArchitectureGuideOpen={isArchitectureGuideOpen}
+                isEnforcementPipelineOpen={isEnforcementPipelineOpen}
+                isEruAuditModalOpen={isEruAuditModalOpen}
+                activeModalOperation={activeModalOperation}
+                // Data
+                asasfNodes={asasfNodes}
+                currentPrompt={currentPrompt}
+                groundingCritique={groundingCritique}
+                promptForPipeline={promptForPipeline}
+                imageForPipeline={imageForPipeline}
+                activeOperations={activeOperations}
+                deployedCapabilities={deployedCapabilities}
+                auditProgress={auditProgress}
+                // Callbacks
+                onClose={handleCloseModal}
+                clearCriticalErrors={clearCriticalErrors}
                 logEvent={logEvent}
-                transcribeAudio={transcribeAudio}
+                handleSendMessage={handleSendMessage}
+                setActiveModalOperation={setActiveModalOperation}
+                // Setters
+                setIsCodexOpen={setIsCodexOpen}
+                setIsBlueprintOpen={setIsBlueprintOpen}
+                setIsAgentsPanelOpen={setIsAgentsPanelOpen}
+                setIsGovernanceReportOpen={setIsGovernanceReportOpen}
+                setIsEvolutionCycleOpen={setIsEvolutionCycleOpen}
+                setIsCognitionModalOpen={setIsCognitionModalOpen}
+                setIsEruDashboardOpen={setIsEruDashboardOpen}
+                setIsPerceptionModalOpen={setIsPerceptionModalOpen}
+                setIsOrientationGuideOpen={setIsOrientationGuideOpen}
+                setIsGroundingModalOpen={setIsGroundingModalOpen}
+                setIsCognitiveCalibrationOpen={setIsCognitiveCalibrationOpen}
+                setIsFullCognitionModalOpen={setIsFullCognitionModalOpen}
+                setIsOmniModeModalOpen={setIsOmniModeModalOpen}
+                setIsRealityCheckModalOpen={setIsRealityCheckModalOpen}
+                setIsArchitectureGuideOpen={setIsArchitectureGuideOpen}
+                setIsEnforcementPipelineOpen={setIsEnforcementPipelineOpen}
+                setIsEruAuditModalOpen={setIsEruAuditModalOpen}
             />
-            <OrientationGuideModal isOpen={isOrientationGuideOpen} onClose={() => setIsOrientationGuideOpen(false)} />
-            <SystemicGroundingModal isOpen={isGroundingModalOpen} onClose={() => setIsGroundingModalOpen(false)} critique={groundingCritique} />
-            <CognitiveCalibrationModal isOpen={isCognitiveCalibrationOpen} onClose={() => setIsCognitiveCalibrationOpen(false)} />
-            <FullCognitionModal isOpen={isFullCognitionModalOpen} onClose={() => setIsFullCognitionModalOpen(false)} />
-            <OmniModeModal isOpen={isOmniModeModalOpen} onClose={() => setIsOmniModeModalOpen(false)} />
-            <RealityCheckModal isOpen={isRealityCheckModalOpen} onClose={() => setIsRealityCheckModalOpen(false)} />
-            <ArchitectureGuideModal isOpen={isArchitectureGuideOpen} onClose={() => setIsArchitectureGuideOpen(false)} deployedCapabilities={deployedCapabilities} />
-            <EnforcementPipelineModal 
-                isOpen={isEnforcementPipelineOpen} 
-                prompt={promptForPipeline} 
-                onClose={() => setIsEnforcementPipelineOpen(false)}
-                onComplete={(processedPrompt) => handleSendMessage(processedPrompt, imageForPipeline)}
-            />
-            
-            {/* Autonomous Operation Modals */}
-            <SCRERefactorModal isOpen={activeModalOperation?.type === OperationType.SCRE} onClose={() => setActiveModalOperation(null)} operation={activeOperations.find(o => o.type === OperationType.SCRE)} />
-            <ECASSynthesisModal isOpen={activeModalOperation?.type === OperationType.ECAS} onClose={() => setActiveModalOperation(null)} operation={activeOperations.find(o => o.type === OperationType.ECAS)} />
-            <CSAEModal isOpen={activeModalOperation?.type === OperationType.CSAE} onClose={() => setActiveModalOperation(null)} operation={activeOperations.find(o => o.type === OperationType.CSAE)} />
-            <ASCModal isOpen={activeModalOperation?.type === OperationType.ASC} onClose={() => setActiveModalOperation(null)} operation={activeOperations.find(o => o.type === OperationType.ASC)} />
-            <NeuralForgeModal isOpen={activeModalOperation?.type === OperationType.NEURAL_FORGE} onClose={() => setActiveModalOperation(null)} operation={activeOperations.find(o => o.type === OperationType.NEURAL_FORGE)} />
-            <PalCoreAuditModal isOpen={activeModalOperation?.type === OperationType.PAL_CORE_AUDIT} onClose={() => setActiveModalOperation(null)} operation={activeOperations.find(o => o.type === OperationType.PAL_CORE_AUDIT)} />
-            <AlgorithmicCorrectionModal isOpen={activeModalOperation?.type === OperationType.ALGORITHMIC_CORRECTION} onClose={() => setActiveModalOperation(null)} operation={activeOperations.find(o => o.type === OperationType.ALGORITHMIC_CORRECTION)} />
-            
-            <ERUAuditModal isOpen={isEruAuditModalOpen} onClose={() => setIsEruAuditModalOpen(false)} progress={auditProgress} />
         </div>
     );
 };

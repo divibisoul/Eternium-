@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { SystemAspect, ActiveOperation } from '../types.ts';
 import { SendIcon } from './icons.tsx';
@@ -53,7 +52,7 @@ export const ChatInput: React.FC<ChatInputProps> = ({
 
     return (
         <footer className="w-full shrink-0">
-            <div className="px-4 max-w-2xl mx-auto w-full">
+            <div className="max-w-2xl mx-auto px-4">
                 <ActiveOperationsMonitor activeOperations={activeOperations} />
             </div>
             <div className="relative z-20 p-4 bg-gray-800/70 border-t border-gray-700 backdrop-blur-sm">

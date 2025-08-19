@@ -41,7 +41,19 @@ const initialCoreModules: AgiCoreModule[] = [
 const checkModuleStatus = (module: AgiCoreModule): Promise<AgiCoreModule> => {
     return new Promise(resolve => {
         setTimeout(() => {
-            const newStatus = Math.random() < 0.02 ? AgiCoreModuleStatus.ERROR : module.status;
+            let newStatus = module.status;
+            // If already in error, 50% chance to recover
+            if (module.status === AgiCoreModuleStatus.ERROR) {
+                if (Math.random() < 0.5) {
+                    newStatus = AgiCoreModuleStatus.ONLINE;
+                }
+            } else {
+                // 2% chance of a new error if not already in error
+                if (Math.random() < 0.02) {
+                   newStatus = AgiCoreModuleStatus.ERROR;
+                }
+            }
+            
             const updatedModule = {
                 ...module,
                 status: newStatus,

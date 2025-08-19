@@ -147,7 +147,7 @@ export const Chat: React.FC<ChatProps> = ({
     }, [messages, isLoading]);
 
     return (
-        <div className="h-full overflow-y-auto pb-4 bg-gray-900">
+        <div className="flex-1 overflow-y-auto pb-4 bg-gray-900">
              {messages.map((msg) => (
                 <React.Fragment key={msg.id}>
                     <MessageBubble message={msg} onFeedback={onFeedback} />

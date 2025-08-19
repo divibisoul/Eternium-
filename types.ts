@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 export interface WebSource {
@@ -217,4 +216,10 @@ export interface AgiCoreModule {
     cpuUsage: number; // 0-100
     memoryUsage: number; // 0-100
     description: string;
+}
+
+export enum SystemStatus {
+    BOOTING = 'BOOTING',
+    ONLINE = 'ONLINE',
+    FAILED = 'FAILED',
 }

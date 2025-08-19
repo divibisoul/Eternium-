@@ -32,6 +32,15 @@
         transition: filter 0.5s ease-in-out;
       }
 
+      @keyframes fadeInApp {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+
+      .app-fade-in {
+        animation: fadeInApp 0.8s ease-in-out forwards;
+      }
+
       @keyframes scanline {
         0% { transform: translateY(-10%); }
         100% { transform: translateY(110%); }
