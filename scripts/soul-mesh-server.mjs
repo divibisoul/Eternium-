@@ -12,6 +12,12 @@ function send(res, status, body) {
 function envelope(kind, message = {}) {
   return { protocol: PROTOCOL, nucleus: NUCLEUS, kind, correlationId: message.correlationId ?? crypto.randomUUID(), timestamp: new Date().toISOString() };
 }
+function validChannelId(message) {
+  if (!message.channelId) return true;
+  const slot = new RegExp(`^(?:${message.source}\\.OUT\\.[1-5]\\.${message.target}|${message.target}\\.IN\\.[1-5]\\.${message.source})$`);
+  const legacy = new RegExp(`^(?:${message.source}\\.OUT\\.${message.target}|${message.target}\\.IN\\.${message.source})$`);
+  return slot.test(message.channelId) || legacy.test(message.channelId);
+}
 const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return send(res, 204, {});
   if (req.url !== '/api/soul-mesh') return send(res, 404, { error: 'NOT_FOUND' });
@@ -23,6 +29,7 @@ const server = http.createServer(async (req, res) => {
     const message = JSON.parse(Buffer.concat(chunks).toString('utf8'));
     if (message.protocol !== PROTOCOL) return send(res, 400, { ...envelope('error', message), code: 'PROTOCOL_UNSUPPORTED' });
     if (message.target && message.target !== NUCLEUS) return send(res, 400, { ...envelope('error', message), code: 'TARGET_MISMATCH' });
+    if (!validChannelId(message)) return send(res, 400, { ...envelope('error', message), code: 'INVALID_CHANNEL_ID' });
     const capability = message.capability ?? message.kind;
     if (capability === 'mesh.ping' || capability === 'mesh.health') return send(res, 200, { ...envelope('response', message), capability, result: { ok: true, nucleus: NUCLEUS }, proof: 'EXECUTED' });
     if (capability === 'mesh.capabilities') return send(res, 200, { ...envelope('response', message), capability, capabilities: CAPABILITIES, proof: 'EXECUTED' });
