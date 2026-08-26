@@ -9,7 +9,20 @@
     "types": ["node"]
   },
   "include": [
-    "src/soul-mesh/**/*.ts",
+    "src/soul-mesh/SoulMeshProtocol.ts",
+    "src/soul-mesh/SoulMeshCapabilities.ts",
+    "src/soul-mesh/SoulMeshCapabilityRegistry.ts",
+    "src/soul-mesh/SoulMeshNode.ts",
+    "src/soul-mesh/SoulMeshHttpTransport.ts",
+    "src/soul-mesh/SoulMeshMemoryTransport.ts",
+    "src/soul-mesh/SoulMeshLoopback.ts",
+    "src/soul-mesh/SoulMeshPeerTransport.ts",
+    "src/soul-mesh/SoulMeshRouter.ts",
+    "src/soul-mesh/SoulMeshPeerEndpoints.ts",
+    "src/soul-mesh/SoulMeshPeerMatrix.ts",
+    "src/soul-mesh/SoulMeshHealth.ts",
+    "src/soul-mesh/createSoulMeshRouter.ts",
+    "src/soul-mesh/endpoint.ts",
     "services/soulMeshAdapter.ts",
     "services/soulMeshRuntime.ts",
     "api/soul-mesh.ts"
