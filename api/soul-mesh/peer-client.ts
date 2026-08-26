@@ -17,29 +17,45 @@ const urls: Partial<Record<NucleusId, string>> = {
   N01: env.SOUL_MESH_N01_URL, N03: env.SOUL_MESH_N03_URL, N04: env.SOUL_MESH_N04_URL,
   N05: env.SOUL_MESH_N05_URL, N06: env.SOUL_MESH_N06_URL,
 };
+const tokens: Partial<Record<NucleusId, string>> = {
+  N01: env.SOUL_MESH_TOKEN_N01, N03: env.SOUL_MESH_TOKEN_N03, N04: env.SOUL_MESH_TOKEN_N04,
+  N05: env.SOUL_MESH_TOKEN_N05, N06: env.SOUL_MESH_TOKEN_N06,
+};
 const uuid = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
 
+const boundedTimeout = (timeoutMs: number) => Math.min(Math.max(timeoutMs, 500), 30000);
+
 export async function sendTo(target: NucleusId, capability: string, payload: unknown, timeoutMs = 15000): Promise<MeshMessage> {
+  if (target === 'N02') throw new Error('SOUL_MESH_SELF_TARGET_NOT_ALLOWED');
+  if (!capability?.trim()) throw new Error('SOUL_MESH_CAPABILITY_REQUIRED');
   const url = urls[target];
   if (!url) throw new Error(`SOUL_MESH_PEER_URL_NOT_CONFIGURED:${target}`);
+
   const correlationId = uuid();
   const message: MeshMessage = {
     protocol: 'soul-mesh/1', id: uuid(), correlationId, source: 'N02', target,
-    kind: 'request', capability, payload, timestamp: Date.now(),
+    kind: 'request', capability: capability.trim(), payload, timestamp: Date.now(),
   };
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const timeout = setTimeout(() => controller.abort(), boundedTimeout(timeoutMs));
   try {
+    const authorization = tokens[target] ? { authorization: `Bearer ${tokens[target]}` } : {};
     const response = await fetch(url, {
       method: 'POST',
-      headers: { 'content-type': 'application/json' },
+      headers: { 'content-type': 'application/json', accept: 'application/json', ...authorization },
       body: JSON.stringify(message),
       signal: controller.signal,
     });
-    const body = await response.json() as MeshMessage;
+    const text = await response.text();
+    let body: MeshMessage;
+    try { body = JSON.parse(text) as MeshMessage; }
+    catch { throw new Error(`SOUL_MESH_INVALID_REMOTE_JSON:${target}:${response.status}`); }
     if (body.correlationId !== correlationId) throw new Error('SOUL_MESH_CORRELATION_MISMATCH');
+    if (body.source !== target || body.target !== 'N02') throw new Error('SOUL_MESH_IDENTITY_MISMATCH');
     if (!response.ok || body.kind === 'error') {
-      throw new Error(`SOUL_MESH_REMOTE_ERROR:${target}:${body.payload && typeof body.payload === 'object' && 'code' in body.payload ? (body.payload as any).code : response.status}`);
+      const code = body.payload && typeof body.payload === 'object' && 'code' in body.payload
+        ? String((body.payload as { code?: unknown }).code) : String(response.status);
+      throw new Error(`SOUL_MESH_REMOTE_ERROR:${target}:${code}`);
     }
     return body;
   } finally {
@@ -50,11 +66,8 @@ export async function sendTo(target: NucleusId, capability: string, payload: unk
 export const requestCapability = (target: NucleusId, capability: string, payload: unknown, timeoutMs = 15000) =>
   sendTo(target, capability, payload, timeoutMs);
 
-export const describePeer = (target: NucleusId, timeoutMs = 5000) =>
-  sendTo(target, 'mesh.describe', {}, timeoutMs);
-
-export const listPeerCapabilities = (target: NucleusId, timeoutMs = 5000) =>
-  sendTo(target, 'capability.list', {}, timeoutMs);
+export const describePeer = (target: NucleusId, timeoutMs = 5000) => sendTo(target, 'mesh.describe', {}, timeoutMs);
+export const listPeerCapabilities = (target: NucleusId, timeoutMs = 5000) => sendTo(target, 'capability.list', {}, timeoutMs);
 
 export async function pingAll(timeoutMs = 5000) {
   return Promise.all(PEERS.map(async target => {
