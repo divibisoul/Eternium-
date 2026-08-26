@@ -1,13 +1,14 @@
 /**
  * Eternium-side adapter for the Soul six-core mesh.
- * This keeps Eternium's cognitive capabilities independent from Android.
+ * N06 owns cognition/governance capabilities but does not ship an AI model.
  */
 export type EterniumCapability =
   | 'reasoning'
   | 'planning'
   | 'agent-execution'
   | 'multimodal-analysis'
-  | 'gemini-inference';
+  | 'synthesis'
+  | 'governance';
 
 export interface SoulMeshMessage<T = unknown> {
   protocol: 'soul-mesh/1';
@@ -21,32 +22,32 @@ export interface SoulMeshMessage<T = unknown> {
   payload: T;
 }
 
-export interface EterniumTask {
-  capability: EterniumCapability;
-  input: unknown;
-  context?: Record<string, unknown>;
-}
-
-export interface EterniumTaskResult {
-  success: boolean;
-  output?: unknown;
-  error?: { code: string; message: string };
-}
+export interface EterniumTask { capability: EterniumCapability; input: unknown; context?: Record<string, unknown>; }
+export interface EterniumTaskResult { success: boolean; output?: unknown; error?: { code: string; message: string }; }
+export type EterniumCapabilityHandler = (input: unknown, context?: Record<string, unknown>) => Promise<unknown> | unknown;
 
 export const ETERNIUM_CAPABILITIES: EterniumCapability[] = [
   'reasoning',
   'planning',
   'agent-execution',
   'multimodal-analysis',
-  'gemini-inference',
+  'synthesis',
+  'governance',
 ];
+
+const handlers = new Map<EterniumCapability, EterniumCapabilityHandler>();
+
+export function registerEterniumCapabilityHandler(capability: EterniumCapability, handler: EterniumCapabilityHandler) {
+  handlers.set(capability, handler);
+  return () => handlers.delete(capability);
+}
 
 export function announceEterniumCapabilities(): SoulMeshMessage<{ capabilities: EterniumCapability[] }> {
   return {
     protocol: 'soul-mesh/1',
     messageId: crypto.randomUUID(),
     correlationId: crypto.randomUUID(),
-    source: 'eternium',
+    source: 'N06',
     target: '*',
     kind: 'capability:announce',
     timestamp: Date.now(),
@@ -59,15 +60,14 @@ export async function executeSoulTask(task: EterniumTask): Promise<EterniumTaskR
     return { success: false, error: { code: 'CAPABILITY_UNAVAILABLE', message: task.capability } };
   }
 
-  // Dispatch remains provider-neutral: existing Eternium services perform the
-  // actual cognitive work; this adapter only translates the Soul mesh contract.
-  return {
-    success: true,
-    output: {
-      capability: task.capability,
-      input: task.input,
-      context: task.context,
-      provider: 'eternium',
-    },
-  };
+  const handler = handlers.get(task.capability);
+  if (!handler) {
+    return { success: false, error: { code: 'CAPABILITY_NOT_CONNECTED', message: task.capability } };
+  }
+
+  try {
+    return { success: true, output: await handler(task.input, task.context) };
+  } catch (error) {
+    return { success: false, error: { code: 'CAPABILITY_EXECUTION_ERROR', message: error instanceof Error ? error.message : 'Unknown error' } };
+  }
 }
