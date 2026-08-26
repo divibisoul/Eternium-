@@ -1,4 +1,17 @@
 {
-  "compilerOptions": { "target": "ES2022", "module": "ESNext", "moduleResolution": "Bundler", "strict": true, "skipLibCheck": true, "noEmit": true },
-  "include": ["src/soul-mesh/endpoint.ts"]
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "types": ["node"]
+  },
+  "include": [
+    "src/soul-mesh/**/*.ts",
+    "services/soulMeshAdapter.ts",
+    "services/soulMeshRuntime.ts",
+    "api/soul-mesh.ts"
+  ]
 }
