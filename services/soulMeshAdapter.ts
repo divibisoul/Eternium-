@@ -34,6 +34,8 @@ export function announceEterniumCapabilities(target: SoulNucleusId): SoulMeshMes
     source: 'N06',
     target,
     kind: 'event',
+    channelId: `N06.OUT.${target}`,
+    proof: 'UNVERIFIED',
     timestamp: Date.now(),
     payload: { capabilities: ETERNIUM_CAPABILITIES },
   };
