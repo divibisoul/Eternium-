@@ -1,6 +1,7 @@
 export type NucleusId='N01'|'N02'|'N03'|'N04'|'N05'|'N06';
 export type MeshKind='request'|'response'|'event'|'error';
 export type MeshMessage={protocol:'soul-mesh/1';id:string;correlationId:string;source:NucleusId;target:NucleusId;kind:MeshKind;capability:string;payload:unknown;timestamp:number};
+export type PeerDescription={nucleus:NucleusId;peers:NucleusId[];protocol:string;status:string;declaredCapabilities:string[];executableCapabilities:string[];transports:string[];channels?:{in:string[];out:string[]}};
 const PEERS:Exclude<NucleusId,'N02'>[]=['N01','N03','N04','N05','N06'];
 const env=(globalThis as any).process?.env ?? {};
 const urls:Partial<Record<NucleusId,string>>={N01:env.SOUL_MESH_N01_URL,N03:env.SOUL_MESH_N03_URL,N04:env.SOUL_MESH_N04_URL,N05:env.SOUL_MESH_N05_URL,N06:env.SOUL_MESH_N06_URL};
@@ -10,6 +11,8 @@ const valid=(x:unknown):x is MeshMessage=>{if(!x||typeof x!=='object')return fal
 async function request(target:NucleusId,capability:string,payload:unknown,timeoutMs=15000,retries=1):Promise<MeshMessage>{const url=urls[target];if(!url)throw new Error(`SOUL_MESH_PEER_URL_NOT_CONFIGURED:${target}`);const correlationId=uuid();const message:MeshMessage={protocol:'soul-mesh/1',id:uuid(),correlationId,source:'N02',target,kind:'request',capability,payload,timestamp:Date.now()};let last:unknown;for(let attempt=0;attempt<=Math.min(3,retries);attempt++){const c=new AbortController();const t=setTimeout(()=>c.abort(),timeoutMs);try{const headers:Record<string,string>={'content-type':'application/json','accept':'application/json'};if(tokens[target])headers.authorization=`Bearer ${tokens[target]}`;const r=await fetch(url,{method:'POST',headers,body:JSON.stringify(message),signal:c.signal});const b:unknown=await r.json().catch(()=>null);if(!valid(b)||b.correlationId!==correlationId||b.source!==target||b.target!=='N02')throw new Error('SOUL_MESH_INVALID_RESPONSE');if(!r.ok||b.kind==='error')throw new Error(`SOUL_MESH_REMOTE_ERROR:${target}:${b.capability}`);return b}catch(e){last=e;if(attempt<Math.min(3,retries))await new Promise(r=>setTimeout(r,250*(attempt+1)))}finally{clearTimeout(t)}}throw last instanceof Error?last:new Error(String(last))}
 export const sendTo=request;
 export const requestPeerCapability=request;
-export const describePeer=(target:NucleusId,timeoutMs=10000)=>request(target,'mesh.describe',{from:'N02',intent:'capability-discovery'},timeoutMs,1);
+export const describePeer=async(target:NucleusId,timeoutMs=10000):Promise<PeerDescription>=>{const message=await request(target,'mesh.describe',{from:'N02',intent:'capability-discovery'},timeoutMs,1);return message.payload as PeerDescription};
+export async function discoverPeerCapabilities(target:NucleusId,timeoutMs=10000){return describePeer(target,timeoutMs);}
+export async function requestPeerTool(target:NucleusId,toolCapability:string,payload:unknown,timeoutMs=15000){return request(target,toolCapability,payload,timeoutMs,1);}
 export async function pingAll(timeoutMs=5000){return Promise.all(PEERS.map(async target=>{try{return{target,status:'CONNECTED' as const,response:await request(target,'mesh.ping',{from:'N02',channel:`N02.OUT.${target}`},timeoutMs,1)}}catch(error){return{target,status:'FAILED' as const,error:String(error)}}}))}
 export const N02_OUT_CHANNELS=PEERS.map(x=>`N02.OUT.${x}`); export const N02_IN_CHANNELS=PEERS.map(x=>`N02.IN.${x}`);
