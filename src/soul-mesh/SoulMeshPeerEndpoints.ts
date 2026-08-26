@@ -1,7 +1,9 @@
-export const R3_PEER_ENDPOINTS = {
-  aeternum: { in: '/soul-mesh/aeternum/in', out: '/soul-mesh/aeternum/out' },
-  nexus: { in: '/soul-mesh/nexus/in', out: '/soul-mesh/nexus/out' },
-  chatbot: { in: '/soul-mesh/chatbot/in', out: '/soul-mesh/chatbot/out' },
-  chatbots: { in: '/soul-mesh/chatbots/in', out: '/soul-mesh/chatbots/out' },
-  'chatbot-2000': { in: '/soul-mesh/chatbot-2000/in', out: '/soul-mesh/chatbot-2000/out' },
-} as const;
+import type { SoulNucleus } from './SoulMeshProtocol';
+
+export const SOUL_MESH_PEER_ENDPOINTS: Record<Exclude<SoulNucleus, 'N06'>, { in: string; out: string }> = {
+  N01: { in: '/soul-mesh/N01/in', out: '/soul-mesh/N01/out' },
+  N02: { in: '/soul-mesh/N02/in', out: '/soul-mesh/N02/out' },
+  N03: { in: '/soul-mesh/N03/in', out: '/soul-mesh/N03/out' },
+  N04: { in: '/soul-mesh/N04/in', out: '/soul-mesh/N04/out' },
+  N05: { in: '/soul-mesh/N05/in', out: '/soul-mesh/N05/out' },
+};
