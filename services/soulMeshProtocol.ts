@@ -1,6 +1,8 @@
 import type { SoulNucleusId } from './soulMeshTopology';
 
 export type SoulMeshKind = 'request' | 'response' | 'event' | 'error';
+export type SoulMeshTransportKind = 'IN_PROCESS' | 'WEBVIEW_BRIDGE' | 'LOOPBACK_HTTP' | 'HTTP' | 'REALTIME';
+export type SoulMeshProof = 'UNVERIFIED' | 'NEGOTIATING' | 'CONNECTED' | 'EXECUTED' | 'VERIFIED';
 
 export interface SoulMeshMessage<T = unknown> {
   protocol: 'soul-mesh/1';
@@ -12,6 +14,9 @@ export interface SoulMeshMessage<T = unknown> {
   capability?: string;
   payload: T;
   timestamp: number;
+  channelId?: string;
+  transport?: SoulMeshTransportKind;
+  proof?: SoulMeshProof;
 }
 
 export function createSoulMeshMessage<T>(input: Omit<SoulMeshMessage<T>, 'protocol' | 'id' | 'timestamp'>): SoulMeshMessage<T> {
