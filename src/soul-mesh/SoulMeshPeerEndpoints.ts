@@ -1,7 +1,9 @@
-export const R3_PEER_ENDPOINTS = {
-  aeternum: { in: '/soul-mesh/aeternum/in', out: '/soul-mesh/aeternum/out' },
-  nexus: { in: '/soul-mesh/nexus/in', out: '/soul-mesh/nexus/out' },
-  chatbot: { in: '/soul-mesh/chatbot/in', out: '/soul-mesh/chatbot/out' },
-  chatbots: { in: '/soul-mesh/chatbots/in', out: '/soul-mesh/chatbots/out' },
-  'chatbot-2000': { in: '/soul-mesh/chatbot-2000/in', out: '/soul-mesh/chatbot-2000/out' },
+export const SOUL_MESH_PEER_ENDPOINTS = {
+  N01: { in: '/api/soul-mesh', out: '/api/soul-mesh' },
+  N03: { in: '/api/soul-mesh', out: '/api/soul-mesh' },
+  N04: { in: '/api/soul-mesh', out: '/api/soul-mesh' },
+  N05: { in: '/api/soul-mesh', out: '/api/soul-mesh' },
+  N06: { in: '/api/soul-mesh', out: '/api/soul-mesh' },
 } as const;
+
+export type SoulMeshPeerId = keyof typeof SOUL_MESH_PEER_ENDPOINTS;

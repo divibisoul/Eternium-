@@ -1,1 +1,31 @@
-export const SOUL_MESH_PROTOCOL='soul-mesh/1'; export type NucleusId='N01'|'N02'|'N03'|'N04'|'N05'|'N06'; export type SoulMeshMessage={protocol:string;id:string;correlationId:string;source:NucleusId;target:NucleusId;kind:string;capability:string;payload:unknown;timestamp:string}; export function validateMessage(m:SoulMeshMessage,nucleusId:NucleusId){if(m.protocol!==SOUL_MESH_PROTOCOL||m.target!==nucleusId||m.source===m.target||!m.id||!m.correlationId||!m.capability)throw new Error('Invalid Mesh message');return true;} export async function handleMeshMessage(m:SoulMeshMessage,nucleusId:NucleusId,handlers:Record<string,(p:unknown)=>Promise<unknown>|unknown>){validateMessage(m,nucleusId);if(m.kind!=='request')return m;const h=handlers[m.capability];if(!h)return {...m,kind:'error',payload:{code:'CAPABILITY_NOT_FOUND'}};try{return {...m,kind:'response',payload:await h(m.payload)}}catch{return {...m,kind:'error',payload:{code:'CAPABILITY_EXECUTION_ERROR'}}}}
+import { isSoulMeshMessage, type SoulMeshMessage, type SoulNucleus } from './SoulMeshProtocol';
+
+export const SOUL_MESH_PROTOCOL = 'soul-mesh/1' as const;
+export type NucleusId = SoulNucleus;
+
+export function validateMessage(value: unknown, nucleusId: NucleusId): asserts value is SoulMeshMessage {
+  if (!isSoulMeshMessage(value)) throw new Error('Invalid Mesh message');
+  if (value.target !== nucleusId) throw new Error('Invalid Mesh target');
+}
+
+export async function handleMeshMessage(
+  value: unknown,
+  nucleusId: NucleusId,
+  handlers: Record<string, (payload: unknown) => Promise<unknown> | unknown>,
+): Promise<SoulMeshMessage> {
+  validateMessage(value, nucleusId);
+  if (value.kind !== 'request') return value;
+
+  const handler = handlers[value.capability];
+  if (!handler) return { ...value, kind: 'error', payload: { code: 'CAPABILITY_HANDLER_NOT_REGISTERED' } };
+
+  try {
+    return { ...value, kind: 'response', payload: await handler(value.payload) };
+  } catch (error) {
+    return {
+      ...value,
+      kind: 'error',
+      payload: { code: 'CAPABILITY_EXECUTION_ERROR', message: error instanceof Error ? error.message : String(error) },
+    };
+  }
+}

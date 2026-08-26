@@ -1,7 +1,7 @@
-/**
- * Eternium-side adapter for the Soul six-core mesh.
- * This keeps Eternium's cognitive capabilities independent from Android.
- */
+import { executeN02Capability } from './soulMeshRuntime.ts';
+
+export type NucleusId = 'N01' | 'N02' | 'N03' | 'N04' | 'N05' | 'N06';
+
 export type EterniumCapability =
   | 'reasoning'
   | 'planning'
@@ -11,12 +11,12 @@ export type EterniumCapability =
 
 export interface SoulMeshMessage<T = unknown> {
   protocol: 'soul-mesh/1';
-  messageId: string;
+  id: string;
   correlationId: string;
-  source: string;
-  target: string | '*';
-  kind: 'capability:announce' | 'capability:request' | 'capability:result' | 'event' | 'context';
-  capability?: string;
+  source: NucleusId;
+  target: NucleusId;
+  kind: 'request' | 'response' | 'event' | 'error';
+  capability: string;
   timestamp: number;
   payload: T;
 }
@@ -25,6 +25,9 @@ export interface EterniumTask {
   capability: EterniumCapability;
   input: unknown;
   context?: Record<string, unknown>;
+  mode?: 'Harmonia' | 'Análise' | 'Abstrato' | 'Síntese';
+  useWebSearch?: boolean;
+  image?: { data: string; mimeType: string };
 }
 
 export interface EterniumTaskResult {
@@ -34,21 +37,18 @@ export interface EterniumTaskResult {
 }
 
 export const ETERNIUM_CAPABILITIES: EterniumCapability[] = [
-  'reasoning',
-  'planning',
-  'agent-execution',
-  'multimodal-analysis',
-  'gemini-inference',
+  'reasoning', 'planning', 'agent-execution', 'multimodal-analysis', 'gemini-inference',
 ];
 
 export function announceEterniumCapabilities(): SoulMeshMessage<{ capabilities: EterniumCapability[] }> {
   return {
     protocol: 'soul-mesh/1',
-    messageId: crypto.randomUUID(),
+    id: crypto.randomUUID(),
     correlationId: crypto.randomUUID(),
-    source: 'eternium',
-    target: '*',
-    kind: 'capability:announce',
+    source: 'N02',
+    target: 'N01',
+    kind: 'event',
+    capability: 'capability.list',
     timestamp: Date.now(),
     payload: { capabilities: ETERNIUM_CAPABILITIES },
   };
@@ -59,15 +59,23 @@ export async function executeSoulTask(task: EterniumTask): Promise<EterniumTaskR
     return { success: false, error: { code: 'CAPABILITY_UNAVAILABLE', message: task.capability } };
   }
 
-  // Dispatch remains provider-neutral: existing Eternium services perform the
-  // actual cognitive work; this adapter only translates the Soul mesh contract.
-  return {
-    success: true,
-    output: {
-      capability: task.capability,
+  if (task.capability === 'agent-execution') {
+    return { success: false, error: { code: 'CAPABILITY_RUNTIME_NOT_IMPLEMENTED', message: 'agent-execution requires the N02 agent runtime; it is not emulated by the Mesh adapter.' } };
+  }
+
+  try {
+    const output = await executeN02Capability(task.capability, {
       input: task.input,
       context: task.context,
-      provider: 'eternium',
-    },
-  };
+      mode: task.mode,
+      useWebSearch: task.useWebSearch,
+      image: task.image,
+    });
+    return { success: true, output };
+  } catch (error) {
+    return {
+      success: false,
+      error: { code: 'CAPABILITY_EXECUTION_ERROR', message: error instanceof Error ? error.message : String(error) },
+    };
+  }
 }
