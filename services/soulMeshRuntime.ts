@@ -1,14 +1,15 @@
 import { Content } from '@google/genai';
 import { processUserDirective } from './geminiService.ts';
-import { SystemAspect } from '../types.ts';
+import { SystemAspect, DeployedCapability } from '../types.ts';
 
 export interface SoulMeshTaskPayload {
   prompt?: string;
   input?: unknown;
-  mode?: 'Harmonia' | 'Análise' | 'Abstrato' | 'Síntese';
+  mode?: SystemAspect;
   useWebSearch?: boolean;
   image?: { data: string; mimeType: string };
   context?: Record<string, unknown>;
+  deployedCapabilities?: DeployedCapability[];
 }
 
 const modeForCapability = (capability: string): SystemAspect => {
@@ -21,23 +22,29 @@ const modeForCapability = (capability: string): SystemAspect => {
 const promptFor = (capability: string, payload: SoulMeshTaskPayload): string => {
   const input = payload.prompt ?? (typeof payload.input === 'string' ? payload.input : JSON.stringify(payload.input ?? {}));
   const context = payload.context ? `\nContexto de execução: ${JSON.stringify(payload.context)}` : '';
-  return `[Soul Mesh N02] Capability=${capability}. Execute a capacidade solicitada usando o runtime cognitivo real do N02. Não alegue execução de ferramenta que não exista. Retorne resultado verificável e indique limitações quando aplicável.\n\nEntrada:\n${input}${context}`;
+  return `[Soul Mesh N02] Capability=${capability}. Execute a capacidade solicitada usando o runtime cognitivo real do N02. Não alegue execução de ferramenta externa que não tenha sido realmente executada. Retorne resultado verificável e indique limitações quando aplicável.\n\nEntrada:\n${input}${context}`;
 };
 
-export async function executeN02Capability(capability: string, payload: SoulMeshTaskPayload): Promise<unknown> {
-  const supported = new Set([
-    'gemini-inference', 'reasoning', 'planning', 'multimodal-analysis',
-    'cognitive.process', 'mpvs', 'multimodal_cortex', 'eus', 'ecas',
-    'asc', 'einstein_reasoning', 'einstein_code', 'einstein_quantum',
-    'neural_forge', 'csae', 'dcrs', 'adaptation_module', 'scre', 'mlfg',
-    'cot_arhd', 'cot_drc', 'cot_area', 'emergent_cognition',
-    'ethical_governance', 'biomolecular_designer', 'strategic_planning',
-    'existential_safety', 'skill_acquisition', 'reality_synthesis',
-  ]);
+const CAPABILITIES = new Set([
+  'gemini-inference', 'reasoning', 'planning', 'multimodal-analysis', 'cognitive.process',
+  'mpvs', 'multimodal_cortex', 'eus', 'ecas', 'asc', 'einstein_reasoning', 'einstein_code',
+  'einstein_quantum', 'neural_forge', 'csae', 'dcrs', 'adaptation_module', 'scre', 'mlfg',
+  'cot_arhd', 'cot_drc', 'cot_area', 'emergent_cognition', 'ethical_governance',
+  'biomolecular_designer', 'strategic_planning', 'existential_safety', 'skill_acquisition',
+  'reality_synthesis',
+]);
 
-  if (!supported.has(capability)) {
+export async function executeN02Capability(capability: string, payload: SoulMeshTaskPayload = {}): Promise<unknown> {
+  if (!CAPABILITIES.has(capability)) {
     return { supported: false, code: 'CAPABILITY_HANDLER_NOT_REGISTERED', capability };
   }
+
+  const deployedCapabilities = payload.deployedCapabilities?.filter(cap => CAPABILITIES.has(cap.id)) ?? [{
+    id: capability,
+    name: capability,
+    status: 'Estável' as const,
+    metric: 1,
+  }];
 
   const prompt = promptFor(capability, payload);
   const contents: Content[] = [{ role: 'user', parts: [{ text: prompt }] }];
@@ -46,10 +53,10 @@ export async function executeN02Capability(capability: string, payload: SoulMesh
   }
 
   const response = await processUserDirective(
-    payload.mode ? (payload.mode as SystemAspect) : modeForCapability(capability),
+    payload.mode ?? modeForCapability(capability),
     contents,
     Boolean(payload.useWebSearch),
-    [],
+    deployedCapabilities,
     false,
   );
 
