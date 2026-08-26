@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "mesh:server": "node scripts/soul-mesh-server.mjs"
+    "mesh:server": "node scripts/soul-mesh-server.mjs",
+    "mesh:peer:probe": "node scripts/soul-mesh-peer.mjs"
   },
   "dependencies": {
     "react-dom": "^19.1.0",
