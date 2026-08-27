@@ -8,7 +8,7 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.mesh.json --noEmit",
-    "mesh:diagnose": "vite --host 127.0.0.1 --open /?mesh-diagnose=1",
+    "mesh:diagnose": "node scripts/mesh-diagnose.mjs",
     "test:integration": "node scripts/test-n1-n2.mjs"
   },
   "dependencies": {
