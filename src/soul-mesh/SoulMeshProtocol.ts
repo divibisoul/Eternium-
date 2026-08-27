@@ -1,34 +1,7 @@
 export type SoulNucleus = 'N01' | 'N02' | 'N03' | 'N04' | 'N05' | 'N06';
-
-export interface SoulMeshMessage<T = unknown> {
-  protocol: 'soul-mesh/1';
-  id: string;
-  correlationId: string;
-  source: SoulNucleus;
-  target: SoulNucleus;
-  kind: 'request' | 'response' | 'event' | 'error';
-  capability?: string;
-  payload: T;
-  timestamp: number;
-}
-
-export interface SoulMeshTransport {
-  send(message: SoulMeshMessage): Promise<void>;
-  onMessage(handler: (message: SoulMeshMessage) => void | Promise<void>): () => void;
-}
-
-export function createSoulMeshMessage<T>(input: Omit<SoulMeshMessage<T>, 'protocol' | 'id' | 'timestamp'>): SoulMeshMessage<T> {
-  return { protocol: 'soul-mesh/1', id: crypto.randomUUID(), timestamp: Date.now(), ...input };
-}
-
-export function isSoulMeshMessage(value: unknown): value is SoulMeshMessage {
-  if (!value || typeof value !== 'object') return false;
-  const m = value as Record<string, unknown>;
-  return m.protocol === 'soul-mesh/1'
-    && typeof m.id === 'string'
-    && typeof m.correlationId === 'string'
-    && typeof m.source === 'string' && /^N0[1-6]$/.test(m.source)
-    && typeof m.target === 'string' && /^N0[1-6]$/.test(m.target)
-    && typeof m.kind === 'string'
-    && (m.capability === undefined || typeof m.capability === 'string');
-}
+export const N02_PEERS: Exclude<SoulNucleus, 'N02'>[] = ['N01','N03','N04','N05','N06'];
+export const SOUL_MESH_PROTOCOL = 'soul-mesh/1' as const;
+export interface SoulMeshMessage<T = unknown> { protocol: typeof SOUL_MESH_PROTOCOL; id: string; correlationId: string; source: SoulNucleus; target: SoulNucleus; kind: 'request' | 'response' | 'event' | 'error'; capability?: string; payload: T; timestamp: number; }
+export interface SoulMeshTransport { send(message: SoulMeshMessage): Promise<void>; onMessage(handler: (message: SoulMeshMessage) => void | Promise<void>): () => void; close?(): Promise<void> | void; }
+export function createSoulMeshMessage<T>(input: Omit<SoulMeshMessage<T>, 'protocol' | 'id' | 'timestamp'>): SoulMeshMessage<T> { return { protocol: SOUL_MESH_PROTOCOL, id: crypto.randomUUID(), timestamp: Date.now(), ...input }; }
+export function isSoulMeshMessage(value: unknown): value is SoulMeshMessage { if (!value || typeof value !== 'object') return false; const m=value as Record<string,unknown>; return m.protocol===SOUL_MESH_PROTOCOL && typeof m.id==='string' && typeof m.correlationId==='string' && typeof m.source==='string' && /^N0[1-6]$/.test(m.source) && typeof m.target==='string' && /^N0[1-6]$/.test(m.target) && ['request','response','event','error'].includes(String(m.kind)) && (m.capability===undefined || typeof m.capability==='string') && typeof m.timestamp==='number' && Number.isFinite(m.timestamp); }

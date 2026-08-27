@@ -1,6 +1,8 @@
 name: Soul Mesh CI
 on:
   push:
+    branches: [ main, 'upgrade/n02-mesh-foundation-v1' ]
+  pull_request:
     branches: [ main ]
   workflow_dispatch:
 jobs:
@@ -11,9 +13,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
-      - run: npm ci
-      - name: Typecheck Mesh adapter
+      - run: npm install
+      - name: Typecheck N02 Mesh
         run: npx tsc -p tsconfig.mesh.json --noEmit
       - name: Build web runtime
         run: npm run build

@@ -1,33 +1,11 @@
-import { discoverPeerCapabilities, requestPeerCapability, type NucleusId, type PeerDescription } from '../../api/soul-mesh/peer-client';
-
-export type N02RemoteCapability = {
-  nucleus: NucleusId;
-  id: string;
-  executable: boolean;
-};
-
-/**
- * N02-side capability fabric. It discovers peer capabilities and delegates execution
- * to the owning nucleus; it never re-implements a peer capability locally.
- */
-export class N02PeerFabric {
-  async describe(nucleus: NucleusId): Promise<PeerDescription> {
-    return discoverPeerCapabilities(nucleus);
-  }
-
-  async discover(nucleus: NucleusId): Promise<N02RemoteCapability[]> {
-    const description = await this.describe(nucleus);
-    const executable = new Set(description.executableCapabilities ?? []);
-    return (description.declaredCapabilities ?? []).map(id => ({
-      nucleus,
-      id,
-      executable: executable.has(id),
-    }));
-  }
-
-  async execute(nucleus: NucleusId, capability: string, payload: unknown) {
-    return requestPeerCapability(nucleus, capability, payload);
-  }
-}
-
-export const n02PeerFabric = new N02PeerFabric();
+import { discoverPeerCapabilities, requestPeerCapability, listRegisteredPeers, type NucleusId, type PeerDescription } from '../../api/soul-mesh/peer-client';
+import { createSoulMeshMessage, type SoulMeshMessage } from './SoulMeshProtocol';
+export type N02RemoteCapability={nucleus:NucleusId;id:string;executable:boolean};
+const PEERS=['N01','N03','N04','N05','N06'] as const;
+export class SoulMeshRouter { constructor(readonly local:NucleusId='N02',readonly timeoutMs=15000){} async request<T=unknown>(target:NucleusId,capability:string,payload:T):Promise<SoulMeshMessage>{return requestPeerCapability(target,capability,payload,this.timeoutMs)} async sendEvent<T=unknown>(target:NucleusId,capability:string,payload:T):Promise<void>{await requestPeerCapability(target,capability,payload,this.timeoutMs)} async sendEventAndWait<T=unknown>(target:NucleusId,capability:string,payload:T):Promise<SoulMeshMessage>{return this.request(target,capability,payload)} ingest(message:SoulMeshMessage):SoulMeshMessage|undefined{return message.target===this.local?message:undefined} close():void{} }
+export class N02PeerFabric { async describe(nucleus:NucleusId):Promise<PeerDescription>{return discoverPeerCapabilities(nucleus)} async discover(nucleus:NucleusId):Promise<N02RemoteCapability[]>{const d=await this.describe(nucleus);const executable=new Set(d.executableCapabilities??[]);return(d.declaredCapabilities??[]).map(id=>({nucleus,id,executable:executable.has(id)}))} async execute(nucleus:NucleusId,capability:string,payload:unknown){return requestPeerCapability(nucleus,capability,payload)} }
+export const n02PeerFabric=new N02PeerFabric(); export const n02Router=new SoulMeshRouter();
+export const N02_IN_CHANNELS=['N02_IN_N01','N02_IN_N03','N02_IN_N04','N02_IN_N05','N02_IN_N06'] as const; export const N02_OUT_CHANNELS=['N02_OUT_N01','N02_OUT_N03','N02_OUT_N04','N02_OUT_N05','N02_OUT_N06'] as const; export const N02_IN_ROUTES=['/mesh/in/N01','/mesh/in/N03','/mesh/in/N04','/mesh/in/N05','/mesh/in/N06'] as const;
+export const createDiagnosticMessage=(target:NucleusId,capability:string,payload:unknown):SoulMeshMessage=>createSoulMeshMessage({source:'N02',target,kind:'request',capability,correlationId:crypto.randomUUID(),payload});
+const invalidTokenProbe=async(target:NucleusId)=>{const peers=await listRegisteredPeers().catch(()=>[]);const peer=peers.find((p:any)=>p.nucleus===target);if(!peer?.url)return{target,status:'SKIPPED' as const,reason:'PEER_URL_NOT_REGISTERED'};const message=createDiagnosticMessage(target,'mesh.health',{diagnostic:'invalid-token'});const url=String(peer.url).includes('/mesh/in/')?String(peer.url):`${String(peer.url).replace(/\/$/,'')}/mesh/in/N02`;const started=Date.now();const r=await fetch(url,{method:'POST',headers:{'content-type':'application/json',authorization:'Bearer INVALID_N02_DIAGNOSTIC_TOKEN'},body:JSON.stringify(message)});return{target,status:r.status===401?'PASS':'FAIL',httpStatus:r.status,durationMs:Date.now()-started};};
+export async function runN02BrowserDiagnostic(options:{verbose?:boolean}={}){const verbose=Boolean(options.verbose);const peers=await listRegisteredPeers().catch(()=>[]);const out=await Promise.all(PEERS.map(async target=>{const started=Date.now();try{const response=await n02Router.request(target,'mesh.health',{diagnostic:true,channel:`N02_OUT_${target}`});return{target,out:'PASS',correlationId:response.correlationId,durationMs:Date.now()-started}}catch(error){return{target,out:String(error).includes('TIMEOUT')?'TIMEOUT':'FAIL',durationMs:Date.now()-started,error:String(error)}}}));const eventTarget='N01' as NucleusId;let event:any;try{const started=Date.now();const response=await n02Router.sendEventAndWait(eventTarget,'mesh.echo',{diagnostic:true,eventConfirmation:true});event={target:eventTarget,status:'PASS',correlationId:response.correlationId,durationMs:Date.now()-started};}catch(error){event={target:eventTarget,status:'FAIL',error:String(error)};}const invalid=await Promise.all(PEERS.map(async target=>{try{return await invalidTokenProbe(target)}catch(error){return{target,status:'FAIL',error:String(error)}}}));const report={nucleus:'N02',timestamp:new Date().toISOString(),verbose,registeredPeers:peers.map((p:any)=>p.nucleus),channels:{in:N02_IN_ROUTES,out:N02_OUT_CHANNELS},out,eventConfirmation:event,invalidTokenTests:invalid};if(verbose)console.info('[N02 MESH DIAGNOSTIC VERBOSE]',report);else console.info('[N02 MESH DIAGNOSTIC]',report);return report;}

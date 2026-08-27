@@ -12,6 +12,10 @@ type MeshMessage = {
   kind: 'request'|'response'|'event'|'error'; capability?: string; payload: unknown; timestamp: number;
 };
 
+const env = () => ((globalThis as any).process?.env ?? {});
+const authDisabled = () => String(env().MESH_AUTH_DISABLED ?? 'false').toLowerCase() === 'true';
+const tokenFor = (peer: string) => env()[`SOUL_MESH_${peer}_TOKEN`];
+
 function validMessage(m: unknown): m is MeshMessage {
   if (!m || typeof m !== 'object') return false;
   const x = m as Record<string, unknown>;
@@ -32,12 +36,17 @@ const envelope = (m: MeshMessage, kind: 'response'|'error', payload: unknown, st
 
 export default async function handler(req:any,res:any) {
   if (req.method !== 'POST') return res.status(405).json({ error:'METHOD_NOT_ALLOWED' });
-  const token = process.env.SOUL_MESH_TOKEN;
-  if (token && req.headers.authorization !== `Bearer ${token}`) return res.status(401).json({ error:'UNAUTHORIZED' });
+  const sourceHeader = String(req.headers?.['x-soul-mesh-source'] ?? '');
+  const token = sourceHeader && tokenFor(sourceHeader);
+  if (!authDisabled()) {
+    if (!sourceHeader || !/^N0[1-6]$/.test(sourceHeader) || sourceHeader === NUCLEUS_ID || !token) return res.status(401).json({ error:'UNAUTHORIZED', code:'PEER_TOKEN_NOT_CONFIGURED' });
+    if (req.headers.authorization !== `Bearer ${token}`) return res.status(401).json({ error:'UNAUTHORIZED', code:'INVALID_PEER_TOKEN' });
+  }
   if (req.headers['content-length'] && Number(req.headers['content-length']) > MAX_BODY_BYTES) return res.status(413).json({ error:'PAYLOAD_TOO_LARGE' });
 
   const m: unknown = req.body;
   if (!validMessage(m)) return res.status(400).json({ error:'INVALID_SOUL_MESH_MESSAGE' });
+  if (!authDisabled() && m.source !== sourceHeader) return res.status(401).json({ error:'UNAUTHORIZED', code:'SOURCE_AUTH_MISMATCH' });
   if (m.kind !== 'request') return res.status(202).json({ accepted:true, correlationId:m.correlationId, source:NUCLEUS_ID, target:m.source });
 
   if (m.capability === 'mesh.ping' || m.capability === 'mesh.health') {
@@ -49,7 +58,7 @@ export default async function handler(req:any,res:any) {
       nucleus:NUCLEUS_ID, peers:[...PEERS], protocol:'soul-mesh/1', status:'online',
       declaredCapabilities:SOUL_MESH_CAPABILITIES.map(c => c.id),
       executableCapabilities:n02CapabilityRuntime.listExecutable(),
-      transports:['http','supabase-realtime','memory/test'],
+      transports:['http','memory/test'],
       channels:{ in:PEERS.map(p=>`N02.IN.${p}`), out:PEERS.map(p=>`N02.OUT.${p}`) },
     });
     return res.status(out.status).json(out.body);

@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "typecheck": "tsc -p tsconfig.mesh.json --noEmit",
+    "mesh:diagnose": "node scripts/mesh-diagnose.mjs",
+    "test:integration": "node scripts/test-n1-n2.mjs"
   },
   "dependencies": {
     "react-dom": "^19.1.0",
@@ -15,6 +18,8 @@
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }
