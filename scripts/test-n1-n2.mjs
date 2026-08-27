@@ -2,7 +2,7 @@ const required=['SOUL_MESH_N01_URL','SOUL_MESH_N02_URL'];
 for(const key of required)if(!process.env[key])throw new Error(`${key}_REQUIRED`);
 const trim=(x)=>String(x).replace(/\/$/,'');
 const urls={N01:process.env.SOUL_MESH_N01_URL,N02:process.env.SOUL_MESH_N02_URL};
-const tokens={N01:process.env.SOUL_MESH_N01_TOKEN,N02:process.env.SOUL_MESH_N02_TOKEN};
+const tokens={N01:process.env.SOUL_MESH_N01_TOKEN,N02:process.env.SOUL_MESH_N02_IN_N01_TOKEN||process.env.SOUL_MESH_N02_TOKEN};
 const endpoint=(source,target)=>`${trim(urls[target])}/mesh/in/${source}`;
 const send=async(source,target,capability,payload)=>{const started=Date.now();const correlationId=crypto.randomUUID();const message={protocol:'soul-mesh/1',id:crypto.randomUUID(),correlationId,source,target,kind:'request',capability,payload,timestamp:Date.now()};const headers={'content-type':'application/json','accept':'application/json','x-soul-mesh-source':source};const token=tokens[target];if(token)headers.authorization=`Bearer ${token}`;const response=await fetch(endpoint(source,target),{method:'POST',headers,body:JSON.stringify(message)});const body=await response.json().catch(()=>null);if(!response.ok)throw new Error(`${target}:${response.status}:${JSON.stringify(body)}`);if(!body||body.correlationId!==correlationId||body.source!==target||body.target!==source)throw new Error(`${target}:INVALID_CORRELATED_RESPONSE`);return{body,durationMs:Date.now()-started};};
 const tests=[
