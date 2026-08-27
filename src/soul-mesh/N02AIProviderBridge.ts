@@ -1,69 +1,17 @@
-import { processUserDirective } from '../../services/geminiService.ts';
+import { processUserDirective, transcribeAudio } from '../../services/geminiService.ts';
 import { SystemAspect } from '../../types.ts';
 import type { SoulMeshMessage } from './SoulMeshProtocol';
 import type { SoulMeshCapabilityHandler } from './SoulMeshCapabilityExecutor';
-
-type MeshPayload = {
-  contents?: unknown;
-  text?: string;
-  mode?: string;
-  useWebSearch?: boolean;
-  deployedCapabilities?: Array<{ id: string; name?: string; status?: 'Processando' | 'Otimizando' | 'Monitorando' | 'Estável'; metric?: number }>;
-  isFullCognitionMode?: boolean;
-};
-
-const modes = new Set(Object.values(SystemAspect));
-
-function normalizeMode(value: unknown): SystemAspect {
-  return typeof value === 'string' && modes.has(value as SystemAspect)
-    ? value as SystemAspect
-    : SystemAspect.SYNTHESIS;
-}
-
-function normalizeContents(payload: MeshPayload) {
-  if (Array.isArray(payload.contents)) return payload.contents as any[];
-  if (typeof payload.text === 'string' && payload.text.trim()) {
-    return [{ role: 'user', parts: [{ text: payload.text }] }];
-  }
-  throw new Error('AI_CONTENTS_REQUIRED');
-}
-
-function normalizeCapabilities(payload: MeshPayload) {
-  return (payload.deployedCapabilities ?? []).map(capability => ({
-    id: capability.id,
-    name: capability.name ?? capability.id,
-    status: capability.status ?? 'Estável',
-    metric: capability.metric ?? 100,
-  }));
-}
-
-export const createN02AIProviderBridge = (): Record<string, SoulMeshCapabilityHandler> => {
-  const execute = async (message: SoulMeshMessage) => {
-    const payload = (message.payload ?? {}) as MeshPayload;
-    const response = await processUserDirective(
-      normalizeMode(payload.mode),
-      normalizeContents(payload),
-      Boolean(payload.useWebSearch),
-      normalizeCapabilities(payload) as any,
-      Boolean(payload.isFullCognitionMode),
-    );
-
-    return {
-      nucleus: 'N02',
-      capability: message.capability,
-      correlationId: message.correlationId,
-      text: response.text,
-      candidates: response.candidates?.map(candidate => ({
-        finishReason: candidate.finishReason,
-        safetyRatings: candidate.safetyRatings,
-        groundingMetadata: candidate.groundingMetadata,
-      })),
-    };
-  };
-
-  return {
-    'ai.generate': execute,
-    'ai.multimodal': execute,
-    'cognitive-processing': execute,
-  };
-};
+type MeshPayload={contents?:unknown;text?:string;mode?:string;useWebSearch?:boolean;deployedCapabilities?:Array<{id:string;name?:string;status?:'Processando'|'Otimizando'|'Monitorando'|'Estável';metric?:number}>;fullCognition?:boolean;isFullCognitionMode?:boolean;audioBase64?:string;mimeType?:string;imageBase64?:string;imageMimeType?:string;personaId?:string;task?:string};
+const modes=new Set(Object.values(SystemAspect)); let activePersonaId:string|undefined;
+const normalizeMode=(v:unknown):SystemAspect=>typeof v==='string'&&modes.has(v as SystemAspect)?v as SystemAspect:SystemAspect.SYNTHESIS;
+const contents=(p:MeshPayload,fallback?:string)=>{if(Array.isArray(p.contents))return p.contents as any[];const text=typeof p.text==='string'?p.text:fallback;if(text?.trim())return[{role:'user',parts:[{text}]}];throw new Error('AI_CONTENTS_REQUIRED')};
+const caps=(p:MeshPayload)=>{const list=p.deployedCapabilities??[];return (activePersonaId&&!list.some(x=>x.id===activePersonaId)?[...list,{id:activePersonaId,name:activePersonaId,status:'Estável' as const,metric:100}]:list).map(c=>({id:c.id,name:c.name??c.id,status:c.status??'Estável',metric:c.metric??100}))};
+const reason=async(m:SoulMeshMessage)=>{const p=(m.payload??{}) as MeshPayload;const full=m.source==='N01'&&Boolean(p.fullCognition??p.isFullCognitionMode);const r=await processUserDirective(normalizeMode(p.mode),contents(p),Boolean(p.useWebSearch),caps(p) as any,full);return{nucleus:'N02',capability:m.capability,correlationId:m.correlationId,text:r.text,candidates:r.candidates?.map(c=>({finishReason:c.finishReason,safetyRatings:c.safetyRatings,groundingMetadata:c.groundingMetadata}))}};
+const search=async(m:SoulMeshMessage)=>reason({...m,payload:{...(m.payload as object),useWebSearch:true}});
+const transcribe=async(m:SoulMeshMessage)=>{const p=(m.payload??{}) as MeshPayload;if(!p.audioBase64||!p.mimeType)throw new Error('AUDIO_INPUT_REQUIRED');return{nucleus:'N02',capability:m.capability,correlationId:m.correlationId,text:await transcribeAudio(p.audioBase64,p.mimeType)}};
+const analyze=async(m:SoulMeshMessage)=>{const p=(m.payload??{}) as MeshPayload;if(p.imageBase64&&p.imageMimeType)return reason({...m,payload:{...p,contents:[{role:'user',parts:[{text:p.text??'Analise a imagem fornecida.'},{inlineData:{data:p.imageBase64,mimeType:p.imageMimeType}}]}]}});return reason(m)};
+const orchestrate=async(m:SoulMeshMessage)=>{const p=(m.payload??{}) as MeshPayload;const task=p.task??p.text;if(!task)throw new Error('ORCHESTRATION_TASK_REQUIRED');return reason({...m,payload:{...p,text:`Orquestre esta tarefa em etapas verificáveis, com dependências, riscos, ordem e resultado esperado: ${task}`}})};
+const switchPersona=async(m:SoulMeshMessage)=>{const p=(m.payload??{}) as MeshPayload;if(!p.personaId?.trim())throw new Error('PERSONA_ID_REQUIRED');activePersonaId=p.personaId.trim();return{nucleus:'N02',capability:m.capability,correlationId:m.correlationId,activePersonaId,status:'active'}};
+const echo=async(m:SoulMeshMessage)=>({nucleus:'N02',capability:m.capability,correlationId:m.correlationId,echo:m.payload});
+export const createN02AIProviderBridge=():Record<string,SoulMeshCapabilityHandler>=>({'mesh.echo':echo,'mesh.health':async m=>({nucleus:'N02',correlationId:m.correlationId,status:'ok'}),'ai.reason':reason,'ai.search':search,'ai.transcribe':transcribe,'ai.analyze':analyze,'system.orchestrate':orchestrate,'persona.switch':switchPersona,'ai.generate':reason,'ai.multimodal':analyze,'cognitive-processing':reason});
