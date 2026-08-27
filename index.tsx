@@ -5,7 +5,7 @@ import { registerWithN01 } from './api/soul-mesh/peer-client';
 import { runN02BrowserDiagnostic } from './src/soul-mesh/N02PeerFabric';
 const bootN02Mesh=async()=>{try{await registerWithN01();}catch(error){console.warn('[N02 MESH] N01 indisponível ou registro adiado:',error);}};
 void bootN02Mesh();
-if(new URLSearchParams(location.search).has('mesh-diagnose')) void runN02BrowserDiagnostic();
+const params=new URLSearchParams(location.search);if(params.has('mesh-diagnose')) void runN02BrowserDiagnostic({verbose:params.has('verbose')});
 const rootElement=document.getElementById('root');
 if(!rootElement)throw new Error('Could not find root element to mount to');
 ReactDOM.createRoot(rootElement).render(<React.StrictMode><App/></React.StrictMode>);
