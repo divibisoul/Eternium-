@@ -1,101 +1,105 @@
 # Aeternum N02 — Linguistic / Audio / Research Core
 
-N02 is an independent AI nucleus built around Gemini 2.5 Flash. It remains independently deployable while becoming a bidirectional member of the six-nucleus Soul Mesh.
+N02 is an independent AI nucleus and a bidirectional member of the six-nucleus Soul Mesh. This branch changes N02 only.
 
-## Mesh identity
+## Mesh
 
 - Protocol: `soul-mesh/1`
 - Local nucleus: `N02`
 - Peers: `N01`, `N03`, `N04`, `N05`, `N06`
-- 5 IN channels: `POST /mesh/in/N01`, `/mesh/in/N03`, `/mesh/in/N04`, `/mesh/in/N05`, `/mesh/in/N06`
-- 5 OUT channels: `N02_OUT_N01` … `N02_OUT_N06`, resolved from discovery
-- Transport: HTTP today; the protocol/transport boundary is kept technology-neutral for future WebSocket/Android adapters.
+- IN: `POST /mesh/in/N01`, `/N03`, `/N04`, `/N05`, `/N06`
+- OUT: `N02_OUT_N01` … `N02_OUT_N06`
+- Development transport: HTTP/Vite; native Android transport remains an APK-stage adapter.
 
-Vite's `configureServer` hook is used for development HTTP ingress. This is a real HTTP server-side middleware, not a browser-only fake route. Production APK deployment will replace this host adapter with a native Android service.
+## Capabilities
 
-## Executable capabilities
-
-| Capability | Function |
+| Capability | Runtime behavior |
 |---|---|
-| `mesh.echo` | diagnostic echo |
-| `mesh.health` | health response |
-| `mesh.describe` | identity and capability discovery |
-| `ai.reason` | Gemini reasoning |
-| `ai.search` | Gemini reasoning with Google Search grounding |
-| `ai.transcribe` | audio → Portuguese text |
-| `ai.analyze` | image analysis |
-| `system.orchestrate` | decomposes a task into verifiable steps |
-| `persona.switch` | selects the active N02 persona |
+| `mesh.echo` | correlated diagnostic echo |
+| `mesh.health` | health probe |
+| `mesh.describe` | identity + declared/executable capability discovery |
+| `ai.reason` | existing Gemini cognitive pipeline; `useAGI:true` routes to N02 orchestrator |
+| `ai.search` | Gemini with Google Search grounding |
+| `ai.transcribe` | existing Gemini audio transcription |
+| `ai.analyze` | existing Gemini multimodal image path |
+| `system.orchestrate` | decomposes a task into executable steps; runs local capabilities or delegates through Mesh |
+| `persona.switch` | session-scoped persona selection using conversation/session/correlation ID |
+| `agent.delegate` | activates the four existing agent definitions: `null_sentinel`, `oracle`, `architect`, `weaver` |
+| `asasf.execute` | executes an explicitly supplied ASASF workflow through existing executable N02 capabilities |
 
-The legacy names `ai.generate`, `ai.multimodal` and `cognitive-processing` remain registered as compatibility aliases.
+Compatibility aliases remain: `ai.generate`, `ai.multimodal`, `cognitive-processing`.
 
 ## Authentication
 
-Each incoming channel may require `Authorization: Bearer <peer-token>`. Development tokens are supplied server-side through `SOUL_MESH_N01_TOKEN`, `SOUL_MESH_N03_TOKEN`, etc. Outbound tokens are read from the same environment and, after registration with N01, the N01 token is persisted in the browser IndexedDB store `soul-mesh-n02`.
+Authentication is **mandatory by default**. Every N02 ingress peer must have its corresponding `SOUL_MESH_<PEER>_TOKEN` configured and send `Authorization: Bearer <token>`. Missing or invalid tokens return `401`.
 
-Never commit secrets. The browser build must not expose production peer tokens; the Android implementation should use secure storage/Keystore.
+For isolated development only, `MESH_AUTH_DISABLED=true` disables the requirement. Never use that setting for production.
+
+Peer tokens and the Gemini key are not injected into the browser bundle. Gemini calls from the browser go through the Vite server-side cognitive proxy. APK deployment must use Android secure storage/Keystore for secrets.
 
 ## N01 registration
 
-At boot N02 attempts `POST <SOUL_MESH_N01_URL>/soul-mesh/register` with its machine-readable manifest and endpoint. If N01 is unavailable, the app remains independently usable and retries can be initiated by the host lifecycle.
+At boot N02 calls `POST <SOUL_MESH_N01_URL>/soul-mesh/register` with the N02 manifest. A successful registration is persisted in the `soul-mesh-n02` IndexedDB peer store. N02 remains independently usable if N01 is unavailable.
 
-Required development variables:
+Development variables:
 
-- `GEMINI_API_KEY` — preferred Gemini key
-- `API_KEY` — legacy fallback
-- `SOUL_MESH_N01_URL` — N01 base URL
-- `SOUL_MESH_N02_URL` — N02 endpoint/base URL
-- `SOUL_MESH_N01_TOKEN` — development token when N01 requires it
-- `SOUL_MESH_N03_URL`, `SOUL_MESH_N04_URL`, `SOUL_MESH_N05_URL`, `SOUL_MESH_N06_URL` — peer URLs when those nuclei are available
-- corresponding `SOUL_MESH_Nxx_TOKEN` variables for authenticated outbound calls
-
-Optional local model:
-
-- `N02_AI_PROVIDER=ollama`
-- `OLLAMA_URL=http://127.0.0.1:11434`
-- `OLLAMA_MODEL=gemma3:4b`
-
-Ollama is a fallback provider only; `ai.search` requires Gemini Google Search grounding and therefore should remain on Gemini when web research is requested.
+- `GEMINI_API_KEY` (preferred) or `API_KEY` — server-side Gemini credential
+- `SOUL_MESH_N01_URL`, `SOUL_MESH_N02_URL`, and other peer URLs
+- `SOUL_MESH_N01_TOKEN` … `SOUL_MESH_N06_TOKEN` — server-side peer credentials
+- `MESH_AUTH_DISABLED=true` — explicit development-only authentication escape hatch
+- `N02_AI_PROVIDER=ollama`, `OLLAMA_URL`, `OLLAMA_MODEL` — optional local provider
 
 ## Diagnostics
 
-Run:
-
 ```bash
 npm run mesh:diagnose
+npm run mesh:diagnose -- --verbose
 ```
 
-This starts the Vite host so the N02 Mesh diagnostics can run in the browser context where IndexedDB exists. The diagnostic path checks the persisted peer registry, outbound `mesh.health`/`mesh.echo`, and authenticated ingress. Real PASS results for a remote peer require that peer to be online; unavailable peers are reported rather than simulated as connected.
+The diagnostic reports registered peers, per-peer health latency, event confirmation and invalid-token probes. A remote `PASS` is not simulated: the target endpoint must actually respond.
+
+## N01 ↔ N02 integration test
+
+With both endpoints online and valid credentials configured:
+
+```bash
+npm run test:integration
+```
+
+The test exercises:
+
+1. N01 → N02 `ai.reason`
+2. N02 → N01 `mesh.echo`
+3. N01 → N02 `persona.switch`
+4. N01 → N02 `system.orchestrate`
+
+Every response is checked for HTTP success, source/target correctness and matching `correlationId`.
 
 ## Architecture
 
 ```text
-N01 ───────┐
-N03 ───────┤
-N04 ───────┤→ N02 Mesh Ingress → SoulMeshCapabilityExecutor → N02 AI services
-N05 ───────┤             ↑
-N06 ───────┘             │
-                        N02 Router → discovery → HTTP OUT → peers
+N01/N03/N04/N05/N06
+        │
+        ▼
+ N02 authenticated ingress
+        │
+        ▼
+ Capability Executor
+        │
+   ┌────┼───────────────┐
+   ▼    ▼               ▼
+  AI   Agents        ASASF workflow
+   │    │               │
+   └────┴──────┬────────┘
+                ▼
+       System Orchestrator
+          │          │
+          ▼          ▼
+       local N02   remote peer
 ```
 
-N02 preserves its own Gemini/persona/audio capabilities. The Mesh exposes those capabilities to N01 and the other nuclei without turning N02 into a passive UI component.
+## Scope and verified status
 
-## FULL COGNITION
+The N02 repository contains real UI definitions for Agents and ASASF and an existing React `useSystemOrchestrator` hook, but that hook contains simulated boot timers and is not a remote execution API. The Mesh activation therefore uses the real agent definitions and existing N02 executable capabilities without pretending the UI hook is a distributed runtime.
 
-A `fullCognition` request is recognized only when the authenticated message source is N01. It is treated as a request for expanded reasoning, **not as permission to disable provider safety controls**. Other peers cannot elevate this mode by setting the flag.
-
-## Current status
-
-- 5 IN logical channels: installed
-- 5 HTTP IN development endpoints: installed
-- 5 OUT channel definitions: installed
-- discovery persistence: installed
-- N01 boot registration: installed
-- per-peer Bearer validation: installed
-- executable capabilities: installed
-- Gemini key priority: `GEMINI_API_KEY`, fallback `API_KEY`
-- optional Ollama provider: installed
-- N02-only scope: preserved
-- real N02↔N01/N03/N04/N05/N06 end-to-end communication: **pending until those peer endpoints are online**
-
-No other nucleus is modified by this N02 branch.
+See `MESH_STATUS.md` for the authoritative acceptance ledger. N02 is not considered closed until CI is green and the four live N01↔N02 integration tests pass.
