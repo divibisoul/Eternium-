@@ -1,7 +1,3 @@
-export const R3_PEER_ENDPOINTS = {
-  aeternum: { in: '/soul-mesh/aeternum/in', out: '/soul-mesh/aeternum/out' },
-  nexus: { in: '/soul-mesh/nexus/in', out: '/soul-mesh/nexus/out' },
-  chatbot: { in: '/soul-mesh/chatbot/in', out: '/soul-mesh/chatbot/out' },
-  chatbots: { in: '/soul-mesh/chatbots/in', out: '/soul-mesh/chatbots/out' },
-  'chatbot-2000': { in: '/soul-mesh/chatbot-2000/in', out: '/soul-mesh/chatbot-2000/out' },
-} as const;
+export const N02_PEER_ENDPOINTS={N01:{in:'/mesh/in/N01',out:'/mesh/in/N02'},N03:{in:'/mesh/in/N03',out:'/mesh/in/N02'},N04:{in:'/mesh/in/N04',out:'/mesh/in/N02'},N05:{in:'/mesh/in/N05',out:'/mesh/in/N02'},N06:{in:'/mesh/in/N06',out:'/mesh/in/N02'}} as const;
+/** @deprecated Legacy aliases retained for compatibility; use N02_PEER_ENDPOINTS. */
+export const R3_PEER_ENDPOINTS={aeternum:N02_PEER_ENDPOINTS.N01,nexus:N02_PEER_ENDPOINTS.N03,chatbot:N02_PEER_ENDPOINTS.N04,chatbots:N02_PEER_ENDPOINTS.N05,'chatbot-2000':N02_PEER_ENDPOINTS.N06} as const;
