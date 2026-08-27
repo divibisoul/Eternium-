@@ -1,31 +1,37 @@
 import type { SoulMeshMessage, SoulMeshTransport } from './SoulMeshProtocol';
-import { createClient, type RealtimeChannel } from '@supabase/supabase-js';
+import { SoulMeshHttpTransport } from './SoulMeshHttpTransport';
 
+/**
+ * @deprecated Supabase Realtime is not part of the active N02 dependency graph.
+ * Keep this adapter for source compatibility, but route it through the canonical
+ * HTTP transport until a native realtime adapter is introduced.
+ */
 export class SoulMeshSupabaseTransport implements SoulMeshTransport {
-  private readonly channel: RealtimeChannel;
-  private handlers = new Set<(message: SoulMeshMessage) => void | Promise<void>>();
+  private readonly delegate: SoulMeshHttpTransport;
 
-  constructor() {
-    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    if (!url || !key) throw new Error('Missing Supabase Realtime configuration');
-    const client = createClient(url, key);
-    this.channel = client.channel('soul-mesh-v1');
-    this.channel.on('broadcast', { event: 'soul_mesh_message' }, ({ payload }) => {
-      const message = payload as SoulMeshMessage;
-      if (message.protocol !== 'soul-mesh/1') return;
-      for (const handler of this.handlers) void handler(message);
-    });
-    void this.channel.subscribe();
+  constructor(endpoint?: string, token?: string) {
+    const env = (globalThis as any).process?.env ?? {};
+    const resolvedEndpoint = endpoint ?? env.SOUL_MESH_N01_URL;
+    if (!resolvedEndpoint) throw new Error('SOUL_MESH_HTTP_ENDPOINT_REQUIRED');
+    const normalized = String(resolvedEndpoint).includes('/mesh/in/')
+      ? String(resolvedEndpoint)
+      : `${String(resolvedEndpoint).replace(/\/$/, '')}/mesh/in/N02`;
+    this.delegate = new SoulMeshHttpTransport(
+      normalized,
+      token ? { authorization: `Bearer ${token}` } : {},
+      { timeoutMs: 10000, retries: 2 },
+    );
   }
 
   onMessage(handler: (message: SoulMeshMessage) => void | Promise<void>): () => void {
-    this.handlers.add(handler);
-    return () => this.handlers.delete(handler);
+    return this.delegate.onMessage(handler);
   }
 
   async send(message: SoulMeshMessage): Promise<void> {
-    const result = await this.channel.send({ type: 'broadcast', event: 'soul_mesh_message', payload: message });
-    if (result !== 'ok') throw new Error(`Soul Mesh broadcast failed: ${result}`);
+    return this.delegate.send(message);
+  }
+
+  close(): void {
+    this.delegate.close();
   }
 }
