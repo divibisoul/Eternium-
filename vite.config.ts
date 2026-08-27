@@ -1,3 +1,27 @@
-import path from 'path'; import { defineConfig, loadEnv, type Plugin } from 'vite'; import { n02HttpMeshHandler } from './src/soul-mesh/endpoint.ts';
-const n02MeshPlugin=():Plugin=>({name:'n02-soul-mesh-http',configureServer(server){server.middlewares.use('/mesh/in',async(req,res,next)=>{if(req.method!=='POST')return next();try{await n02HttpMeshHandler(req,res);}catch(error){if(!res.headersSent){res.statusCode=500;res.setHeader('content-type','application/json');res.end(JSON.stringify({error:'N02_MESH_INTERNAL_ERROR',message:error instanceof Error?error.message:String(error)}));}}});}});
-export default defineConfig(({mode})=>{const env=loadEnv(mode,'.','');const geminiKey=env.GEMINI_API_KEY||env.API_KEY;const publicMesh={SOUL_MESH_N01_URL:env.SOUL_MESH_N01_URL||'',SOUL_MESH_N02_URL:env.SOUL_MESH_N02_URL||'',SOUL_MESH_N03_URL:env.SOUL_MESH_N03_URL||'',SOUL_MESH_N04_URL:env.SOUL_MESH_N04_URL||'',SOUL_MESH_N05_URL:env.SOUL_MESH_N05_URL||'',SOUL_MESH_N06_URL:env.SOUL_MESH_N06_URL||'',N02_AI_PROVIDER:env.N02_AI_PROVIDER||'gemini',OLLAMA_URL:env.OLLAMA_URL||'',OLLAMA_MODEL:env.OLLAMA_MODEL||''};return{plugins:[n02MeshPlugin()],define:{'process.env.API_KEY':JSON.stringify(geminiKey),'process.env.GEMINI_API_KEY':JSON.stringify(geminiKey),...Object.fromEntries(Object.entries(publicMesh).map(([k,v])=>[`import.meta.env.${k}`,JSON.stringify(v)]))},resolve:{alias:{'@':path.resolve(__dirname,'.')}}};});
+import path from 'path';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
+import { n02HttpMeshHandler } from './src/soul-mesh/endpoint.ts';
+import { GoogleGenAI } from '@google/genai';
+
+const readJsonBody=(req:any):Promise<any>=>new Promise((resolve,reject)=>{let data='';req.on('data',(chunk:Buffer)=>{data+=chunk.toString();if(data.length>2_000_000)reject(new Error('PAYLOAD_TOO_LARGE'));});req.on('end',()=>{try{resolve(JSON.parse(data||'{}'))}catch{reject(new Error('INVALID_JSON'))}});req.on('error',reject)});
+const serverGemini=(env:Record<string,string>)=>{const key=env.GEMINI_API_KEY||env.API_KEY;if(!key)throw new Error('GEMINI_API_KEY_REQUIRED_SERVER_SIDE');return new GoogleGenAI({apiKey:key});};
+
+const n02MeshPlugin=():Plugin=>({name:'n02-soul-mesh-http',configureServer(server){
+  server.middlewares.use('/mesh/in',async(req,res,next)=>{if(req.method!=='POST')return next();try{await n02HttpMeshHandler(req,res);}catch(error){if(!res.headersSent){res.statusCode=500;res.setHeader('content-type','application/json');res.end(JSON.stringify({error:'N02_MESH_INTERNAL_ERROR',message:error instanceof Error?error.message:String(error)}));}}});
+}});
+
+const n02CognitiveProxy=(env:Record<string,string>):Plugin=>({name:'n02-cognitive-server-proxy',configureServer(server){
+  const respond=async(req:any,res:any,kind:'cognitive'|'transcribe')=>{try{
+    const body=await readJsonBody(req);const ai=serverGemini(env);
+    if(kind==='transcribe'){
+      const response=await ai.models.generateContent({model:'gemini-2.5-flash',contents:{parts:[{inlineData:{mimeType:String(body.mimeType||''),data:String(body.audioBase64||'')}},{text:'Transcreva o seguinte áudio para o português do Brasil. Responda apenas com o texto transcrito.'}]}});
+      res.statusCode=200;res.setHeader('content-type','application/json');res.end(JSON.stringify({text:response.text??''}));return;
+    }
+    const config:any={temperature:0.6};const personas=Array.isArray(body.deployedCapabilities)?body.deployedCapabilities:[];const personaMap:Record<string,string>={mpvs:'PERSONA ATIVA: ESPECIALISTA EM VISUALIZAÇÃO MULTIMODAL.',neural_forge:'PERSONA ATIVA: NEUROCIENTISTA COMPUTACIONAL.',asc:'PERSONA ATIVA: PESQUISADOR CIENTÍFICO AUTÔNOMO.',bnc_v2:'PERSONA ATIVA: ARQUITETO NEURAL BIOMÓRFICO.',einstein_code:'PERSONA ATIVA: AUDITOR DE CÓDIGO.'};const active=personas.map((p:any)=>personaMap[p?.id]).filter(Boolean);config.systemInstruction=active.length?active.join('\n'): 'Você é Aeternum, uma IA modular. Responda de forma clara e direta.';if(body.isFullCognitionMode)config.systemInstruction+='\nModo de raciocínio expandido solicitado por N01 autenticado; mantenha todos os controles de segurança do provedor.';if(body.useWebSearch)config.tools=[{googleSearch:{}}];
+    const response=await ai.models.generateContent({model:'gemini-2.5-flash',contents:body.contents??[],config});res.statusCode=200;res.setHeader('content-type','application/json');res.end(JSON.stringify({text:response.text??'',candidates:response.candidates??[]}));
+  }catch(error){res.statusCode=500;res.setHeader('content-type','application/json');res.end(JSON.stringify({error:error instanceof Error?error.message:String(error)}));}};
+  server.middlewares.use('/api/soul-mesh/cognitive',async(req,res,next)=>req.method==='POST'?respond(req,res,'cognitive'):next());
+  server.middlewares.use('/api/soul-mesh/transcribe',async(req,res,next)=>req.method==='POST'?respond(req,res,'transcribe'):next());
+}});
+
+export default defineConfig(({mode})=>{const env=loadEnv(mode,'.','');const publicMesh={SOUL_MESH_N01_URL:env.SOUL_MESH_N01_URL||'',SOUL_MESH_N02_URL:env.SOUL_MESH_N02_URL||'',SOUL_MESH_N03_URL:env.SOUL_MESH_N03_URL||'',SOUL_MESH_N04_URL:env.SOUL_MESH_N04_URL||'',SOUL_MESH_N05_URL:env.SOUL_MESH_N05_URL||'',SOUL_MESH_N06_URL:env.SOUL_MESH_N06_URL||'',SOUL_MESH_N01_TOKEN:env.SOUL_MESH_N01_TOKEN||'',N02_AI_PROVIDER:env.N02_AI_PROVIDER||'gemini',OLLAMA_URL:env.OLLAMA_URL||'',OLLAMA_MODEL:env.OLLAMA_MODEL||'',MESH_AUTH_DISABLED:env.MESH_AUTH_DISABLED||'false'};return{plugins:[n02MeshPlugin(),n02CognitiveProxy(env)],define:Object.fromEntries(Object.entries(publicMesh).map(([k,v])=>[`import.meta.env.${k}`,JSON.stringify(v)])),resolve:{alias:{'@':path.resolve(__dirname,'.')}}};});
