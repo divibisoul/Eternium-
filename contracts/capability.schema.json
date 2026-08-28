@@ -1,0 +1,51 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "SOUL Capability Document",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "node": {
+      "type": "string",
+      "enum": ["N01", "N02", "N03", "N04", "N05", "N06"]
+    },
+    "capabilities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "version": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+          "implementation": { "type": "string", "minLength": 1 },
+          "status": {
+            "type": "string",
+            "enum": ["AVAILABLE", "DEGRADED", "UNAVAILABLE"]
+          },
+          "input": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "output": {
+            "type": "array",
+            "items": { "type": "string", "minLength": 1 }
+          },
+          "latency_ms": { "type": ["number", "null"], "minimum": 0 },
+          "privacy": { "type": ["number", "null"], "minimum": 0, "maximum": 1 },
+          "cost": { "type": ["number", "null"], "minimum": 0 }
+        },
+        "required": [
+          "id",
+          "version",
+          "implementation",
+          "status",
+          "input",
+          "output",
+          "latency_ms",
+          "privacy",
+          "cost"
+        ]
+      }
+    }
+  },
+  "required": ["node", "capabilities"]
+}
