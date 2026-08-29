@@ -1,5 +1,5 @@
 import { SOUL_MESH_CAPABILITIES } from '../src/soul-mesh/SoulMeshCapabilities';
-import { n02CapabilityRuntime } from '../src/soul-mesh/N02CapabilityRuntime';
+import { n02CapabilityRuntime, executeN02Agent, n02AgentRegistry } from '../src/soul-mesh/N02CapabilityRuntime';
 
 const NUCLEUS_ID = 'N02' as const;
 const NUCLEI = new Set(['N01', 'N02', 'N03', 'N04', 'N05', 'N06']);
@@ -49,6 +49,7 @@ export default async function handler(req:any,res:any) {
       nucleus:NUCLEUS_ID, peers:[...PEERS], protocol:'soul-mesh/1', status:'online',
       declaredCapabilities:SOUL_MESH_CAPABILITIES.map(c => c.id),
       executableCapabilities:n02CapabilityRuntime.listExecutable(),
+      agents:n02AgentRegistry.list().map(agent => ({ id:agent.id, capabilities:agent.capabilities })),
       transports:['http','supabase-realtime','memory/test'],
       channels:{ in:PEERS.map(p=>`N02.IN.${p}`), out:PEERS.map(p=>`N02.OUT.${p}`) },
     });
@@ -61,7 +62,7 @@ export default async function handler(req:any,res:any) {
     return res.status(out.status).json(out.body);
   }
   try {
-    const payload = await n02CapabilityRuntime.execute(m);
+    const payload = await executeN02Agent(m);
     const out = envelope(m, 'response', payload);
     return res.status(out.status).json(out.body);
   } catch (error) {
