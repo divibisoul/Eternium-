@@ -15,9 +15,9 @@ for (const [capability, handler] of Object.entries(handlers)) {
 }
 
 n02CapabilityRuntime.register('mesh.describe', () => {
-  const manifest = getN02MeshManifest();
+  const executableCapabilities = n02CapabilityRuntime.listExecutable();
   return {
-    ...manifest,
+    ...getN02MeshManifest(executableCapabilities),
     status: 'ready',
     peers: ['N01', 'N03', 'N04', 'N05', 'N06'],
     transports: ['http'],
