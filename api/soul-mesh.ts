@@ -1,5 +1,6 @@
 import { SOUL_MESH_CAPABILITIES } from '../src/soul-mesh/SoulMeshCapabilities';
 import { n02CapabilityRuntime, executeN02Agent, n02AgentRegistry } from '../src/soul-mesh/N02CapabilityRuntime';
+import { createSoulMeshNonce, verifySoulMeshMessage } from './soul-mesh/hmac';
 
 const NUCLEUS_ID = 'N02' as const;
 const NUCLEI = new Set(['N01', 'N02', 'N03', 'N04', 'N05', 'N06']);
@@ -10,6 +11,7 @@ type MeshMessage = {
   protocol: 'soul-mesh/1'; id: string; correlationId: string;
   source: 'N01'|'N02'|'N03'|'N04'|'N05'|'N06'; target: 'N01'|'N02'|'N03'|'N04'|'N05'|'N06';
   kind: 'request'|'response'|'event'|'error'; capability?: string; payload: unknown; timestamp: number;
+  transport?: string; meta?: Record<string, unknown>;
 };
 
 function validMessage(m: unknown): m is MeshMessage {
@@ -24,20 +26,31 @@ function validMessage(m: unknown): m is MeshMessage {
     && typeof x.timestamp === 'number' && Number.isFinite(x.timestamp);
 }
 
+function authorized(req: any, message: MeshMessage): boolean {
+  const token = process.env.SOUL_MESH_TOKEN?.trim() ?? '';
+  if (token && req.headers.authorization === `Bearer ${token}`) return true;
+
+  const secret = process.env.SOUL_MESH_HMAC_SECRET?.trim() ?? '';
+  if (!secret) return process.env.NODE_ENV !== 'production';
+
+  const nonce = String(req.headers['x-soul-mesh-nonce'] ?? '');
+  const hmac = String(req.headers['x-soul-mesh-hmac'] ?? '');
+  return verifySoulMeshMessage(message, secret, nonce, hmac);
+}
+
 const envelope = (m: MeshMessage, kind: 'response'|'error', payload: unknown, status = 200) => ({
   status,
   body: { protocol:'soul-mesh/1', id:crypto.randomUUID(), correlationId:m.correlationId,
-    source:NUCLEUS_ID, target:m.source, kind, capability:m.capability, payload, timestamp:Date.now() }
+    source:NUCLEUS_ID, target:m.source, kind, capability:m.capability, payload, timestamp:Date.now(), transport:'HTTP' }
 });
 
 export default async function handler(req:any,res:any) {
   if (req.method !== 'POST') return res.status(405).json({ error:'METHOD_NOT_ALLOWED' });
-  const token = process.env.SOUL_MESH_TOKEN;
-  if (token && req.headers.authorization !== `Bearer ${token}`) return res.status(401).json({ error:'UNAUTHORIZED' });
   if (req.headers['content-length'] && Number(req.headers['content-length']) > MAX_BODY_BYTES) return res.status(413).json({ error:'PAYLOAD_TOO_LARGE' });
 
   const m: unknown = req.body;
   if (!validMessage(m)) return res.status(400).json({ error:'INVALID_SOUL_MESH_MESSAGE' });
+  if (!authorized(req, m)) return res.status(401).json({ error:'UNAUTHORIZED' });
   if (m.kind !== 'request') return res.status(202).json({ accepted:true, correlationId:m.correlationId, source:NUCLEUS_ID, target:m.source });
 
   if (m.capability === 'mesh.ping' || m.capability === 'mesh.health') {
