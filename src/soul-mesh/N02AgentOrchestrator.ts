@@ -6,7 +6,7 @@ import { discoverPeerCapabilities, requestPeerCapability } from '../../api/soul-
 export interface N02TaskRequest<T = unknown> {
   capability: string;
   payload: T;
-  preferredNucleus?: SoulNucleus;
+  preferredNucleus?: Exclude<SoulNucleus, 'N02'>;
   timeoutMs?: number;
 }
 
@@ -16,7 +16,7 @@ export interface N02TaskResult {
   response: SoulMeshMessage;
 }
 
-const PEERS: SoulNucleus[] = ['N01', 'N03', 'N04', 'N05', 'N06'];
+const PEERS: Exclude<SoulNucleus, 'N02'>[] = ['N01', 'N03', 'N04', 'N05', 'N06'];
 
 export function getN02AgentStatus() {
   return {
@@ -25,6 +25,7 @@ export function getN02AgentStatus() {
     declaredCapabilities: n02CapabilityRuntime.registry.getAll().map(c => c.id).sort(),
     executableCapabilities: n02CapabilityRuntime.listExecutable(),
     meshDelegation: true as const,
+    peerNuclei: [...PEERS],
   };
 }
 
@@ -59,9 +60,9 @@ export async function delegateTask<T>(request: N02TaskRequest<T>): Promise<N02Ta
     }) };
   }
 
-  const candidates = request.preferredNucleus
+  const candidates: Exclude<SoulNucleus, 'N02'>[] = request.preferredNucleus
     ? [request.preferredNucleus, ...PEERS.filter(n => n !== request.preferredNucleus)]
-    : PEERS;
+    : [...PEERS];
   let lastError: unknown;
 
   for (const nucleus of candidates) {
