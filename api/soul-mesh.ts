@@ -1,10 +1,12 @@
 import { SOUL_MESH_CAPABILITIES } from '../src/soul-mesh/SoulMeshCapabilities';
 import { n02CapabilityRuntime } from '../src/soul-mesh/N02CapabilityRuntime';
+import { delegateTask } from '../src/soul-mesh/N02AgentOrchestrator';
 
 const NUCLEUS_ID = 'N02' as const;
 const NUCLEI = new Set(['N01', 'N02', 'N03', 'N04', 'N05', 'N06']);
 const PEERS = ['N01', 'N03', 'N04', 'N05', 'N06'] as const;
 const MAX_BODY_BYTES = 1_000_000;
+const MAX_ID_LENGTH = 200;
 
 type MeshMessage = {
   protocol: 'soul-mesh/1'; id: string; correlationId: string;
@@ -15,13 +17,15 @@ type MeshMessage = {
 function validMessage(m: unknown): m is MeshMessage {
   if (!m || typeof m !== 'object') return false;
   const x = m as Record<string, unknown>;
-  return x.protocol === 'soul-mesh/1' && typeof x.id === 'string' && x.id.length <= 200
-    && typeof x.correlationId === 'string' && x.correlationId.length <= 200
-    && typeof x.source === 'string' && NUCLEI.has(x.source)
-    && x.target === NUCLEUS_ID && x.source !== NUCLEUS_ID
+  return x.protocol === 'soul-mesh/1'
+    && typeof x.id === 'string' && x.id.length > 0 && x.id.length <= MAX_ID_LENGTH
+    && typeof x.correlationId === 'string' && x.correlationId.length > 0 && x.correlationId.length <= MAX_ID_LENGTH
+    && typeof x.source === 'string' && NUCLEI.has(x.source) && x.source !== NUCLEUS_ID
+    && x.target === NUCLEUS_ID
     && ['request','response','event','error'].includes(String(x.kind))
-    && (!x.capability || (typeof x.capability === 'string' && x.capability.length <= 200))
-    && typeof x.timestamp === 'number' && Number.isFinite(x.timestamp);
+    && (!x.capability || (typeof x.capability === 'string' && x.capability.length > 0 && x.capability.length <= MAX_ID_LENGTH))
+    && 'payload' in x
+    && typeof x.timestamp === 'number' && Number.isFinite(x.timestamp) && x.timestamp > 0;
 }
 
 const envelope = (m: MeshMessage, kind: 'response'|'error', payload: unknown, status = 200) => ({
@@ -56,6 +60,26 @@ export default async function handler(req:any,res:any) {
   }
 
   if (!m.capability) return res.status(400).json({ error:'CAPABILITY_REQUIRED', correlationId:m.correlationId });
+
+  if (m.capability === 'mesh.delegate') {
+    if (!m.payload || typeof m.payload !== 'object') return res.status(400).json({ error:'DELEGATION_PAYLOAD_REQUIRED', correlationId:m.correlationId });
+    const input = m.payload as Record<string, unknown>;
+    if (typeof input.capability !== 'string' || !input.capability.trim()) return res.status(400).json({ error:'DELEGATION_CAPABILITY_REQUIRED', correlationId:m.correlationId });
+    try {
+      const result = await delegateTask({
+        capability: input.capability,
+        payload: input.payload,
+        preferredNucleus: typeof input.preferredNucleus === 'string' && NUCLEI.has(input.preferredNucleus) ? input.preferredNucleus as MeshMessage['source'] : undefined,
+        timeoutMs: typeof input.timeoutMs === 'number' ? input.timeoutMs : undefined,
+      });
+      const out = envelope(m, 'response', { ...result, correlationId:m.correlationId });
+      return res.status(out.status).json(out.body);
+    } catch (error) {
+      const out = envelope(m, 'error', { code:'DELEGATION_FAILED', nucleus:NUCLEUS_ID, error:error instanceof Error ? error.message : String(error) }, 502);
+      return res.status(out.status).json(out.body);
+    }
+  }
+
   if (!n02CapabilityRuntime.has(m.capability)) {
     const out = envelope(m, 'error', { code:'CAPABILITY_HANDLER_NOT_REGISTERED', nucleus:NUCLEUS_ID, capability:m.capability }, 501);
     return res.status(out.status).json(out.body);
