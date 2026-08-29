@@ -61,35 +61,36 @@ export default async function handler(req:any,res:any) {
 
   if (!m.capability) return res.status(400).json({ error:'CAPABILITY_REQUIRED', correlationId:m.correlationId });
 
-  if (m.capability === 'mesh.delegate') {
-    if (!m.payload || typeof m.payload !== 'object') return res.status(400).json({ error:'DELEGATION_PAYLOAD_REQUIRED', correlationId:m.correlationId });
-    const input = m.payload as Record<string, unknown>;
-    if (typeof input.capability !== 'string' || !input.capability.trim()) return res.status(400).json({ error:'DELEGATION_CAPABILITY_REQUIRED', correlationId:m.correlationId });
+  if (n02CapabilityRuntime.has(m.capability)) {
     try {
-      const result = await delegateTask({
-        capability: input.capability,
-        payload: input.payload,
-        preferredNucleus: typeof input.preferredNucleus === 'string' && NUCLEI.has(input.preferredNucleus) ? input.preferredNucleus as MeshMessage['source'] : undefined,
-        timeoutMs: typeof input.timeoutMs === 'number' ? input.timeoutMs : undefined,
-      });
-      const out = envelope(m, 'response', { ...result, correlationId:m.correlationId });
+      const payload = await n02CapabilityRuntime.execute(m);
+      const out = envelope(m, 'response', payload);
       return res.status(out.status).json(out.body);
     } catch (error) {
-      const out = envelope(m, 'error', { code:'DELEGATION_FAILED', nucleus:NUCLEUS_ID, error:error instanceof Error ? error.message : String(error) }, 502);
+      const out = envelope(m, 'error', { code:'CAPABILITY_EXECUTION_ERROR', nucleus:NUCLEUS_ID, capability:m.capability, error:error instanceof Error ? error.message : String(error) }, 500);
       return res.status(out.status).json(out.body);
     }
   }
 
-  if (!n02CapabilityRuntime.has(m.capability)) {
-    const out = envelope(m, 'error', { code:'CAPABILITY_HANDLER_NOT_REGISTERED', nucleus:NUCLEUS_ID, capability:m.capability }, 501);
-    return res.status(out.status).json(out.body);
-  }
   try {
-    const payload = await n02CapabilityRuntime.execute(m);
-    const out = envelope(m, 'response', payload);
+    const result = await delegateTask({
+      capability: m.capability,
+      payload: m.payload,
+      timeoutMs: 15000,
+    });
+    const out = envelope(m, 'response', {
+      delegated: true,
+      executedBy: result.executedBy,
+      response: result.response.payload,
+    });
     return res.status(out.status).json(out.body);
   } catch (error) {
-    const out = envelope(m, 'error', { code:'CAPABILITY_EXECUTION_ERROR', nucleus:NUCLEUS_ID, capability:m.capability, error:error instanceof Error ? error.message : String(error) }, 500);
+    const out = envelope(m, 'error', {
+      code:'CAPABILITY_UNAVAILABLE',
+      nucleus:NUCLEUS_ID,
+      capability:m.capability,
+      error:error instanceof Error ? error.message : String(error),
+    }, 503);
     return res.status(out.status).json(out.body);
   }
 }
