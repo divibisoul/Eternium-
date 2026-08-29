@@ -17,7 +17,7 @@ for (const [capability, handler] of Object.entries(handlers)) {
 n02CapabilityRuntime.register('mesh.describe', () => {
   const executableCapabilities = n02CapabilityRuntime.listExecutable();
   return {
-    ...getN02MeshManifest(executableCapabilities),
+    ...getN02MeshManifest(),
     status: 'ready',
     peers: ['N01', 'N03', 'N04', 'N05', 'N06'],
     transports: ['http'],
@@ -25,14 +25,12 @@ n02CapabilityRuntime.register('mesh.describe', () => {
       in: ['N01.IN.N02', 'N03.IN.N02', 'N04.IN.N02', 'N05.IN.N02', 'N06.IN.N02'],
       out: ['N02.OUT.N01', 'N02.OUT.N03', 'N02.OUT.N04', 'N02.OUT.N05', 'N02.OUT.N06'],
     },
+    runtime: { executableCapabilities, acceptingRequests: true, delegationEnabled: true },
   };
 });
 
 n02CapabilityRuntime.register('mesh.ping', (message: SoulMeshMessage) => ({
-  nucleus: 'N02',
-  status: 'ready',
-  echo: message.correlationId,
-  timestamp: Date.now(),
+  nucleus: 'N02', status: 'ready', echo: message.correlationId, timestamp: Date.now(),
 }));
 
 /** Runtime introspection used by Mesh discovery and diagnostics. */
@@ -40,10 +38,13 @@ export function getN02RuntimeStatus() {
   const executableCapabilities = n02CapabilityRuntime.listExecutable();
   return {
     nucleus: 'N02' as const,
+    independent: true as const,
     declaredCapabilities: n02CapabilityRuntime.registry.getAll().map(c => c.id).sort(),
     executableCapabilities,
     aiBridgeConnected: executableCapabilities.includes('ai.generate'),
     meshDiscoveryReady: executableCapabilities.includes('mesh.describe'),
     meshLivenessReady: executableCapabilities.includes('mesh.ping'),
+    delegationReady: true,
+    peerCount: 5,
   };
 }
