@@ -28,4 +28,8 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     id: 'mesh.describe', version: '1.0', description: 'N02 identity, capabilities, tools and transport discovery',
     request: true, response: true, events: false, owner: 'N02', context: [], tools: []
   },
+  {
+    id: 'mesh.ping', version: '1.0', description: 'N02 Mesh liveness and correlation probe',
+    request: true, response: true, events: false, owner: 'N02', context: [], tools: []
+  },
 ];
