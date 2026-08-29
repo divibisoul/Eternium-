@@ -1,4 +1,5 @@
 import { SOUL_MESH_CAPABILITIES } from '../src/soul-mesh/SoulMeshCapabilities';
+import { SOUL_MESH_CONTRACT_VERSION } from '../src/soul-mesh/SoulMeshProtocol';
 import { n02CapabilityRuntime, executeN02Agent, n02AgentRegistry } from '../src/soul-mesh/N02CapabilityRuntime';
 
 const NUCLEUS_ID = 'N02' as const;
@@ -7,7 +8,7 @@ const PEERS = ['N01', 'N03', 'N04', 'N05', 'N06'] as const;
 const MAX_BODY_BYTES = 1_000_000;
 
 type MeshMessage = {
-  protocol: 'soul-mesh/1'; id: string; correlationId: string;
+  protocol: 'soul-mesh/1'; contractVersion: string; id: string; correlationId: string;
   source: 'N01'|'N02'|'N03'|'N04'|'N05'|'N06'; target: 'N01'|'N02'|'N03'|'N04'|'N05'|'N06';
   kind: 'request'|'response'|'event'|'error'; capability?: string; payload: unknown; timestamp: number;
 };
@@ -15,7 +16,8 @@ type MeshMessage = {
 function validMessage(m: unknown): m is MeshMessage {
   if (!m || typeof m !== 'object') return false;
   const x = m as Record<string, unknown>;
-  return x.protocol === 'soul-mesh/1' && typeof x.id === 'string' && x.id.length <= 200
+  return x.protocol === 'soul-mesh/1' && typeof x.contractVersion === 'string' && x.contractVersion.length > 0
+    && typeof x.id === 'string' && x.id.length <= 200
     && typeof x.correlationId === 'string' && x.correlationId.length <= 200
     && typeof x.source === 'string' && NUCLEI.has(x.source)
     && x.target === NUCLEUS_ID && x.source !== NUCLEUS_ID
@@ -26,7 +28,7 @@ function validMessage(m: unknown): m is MeshMessage {
 
 const envelope = (m: MeshMessage, kind: 'response'|'error', payload: unknown, status = 200) => ({
   status,
-  body: { protocol:'soul-mesh/1', id:crypto.randomUUID(), correlationId:m.correlationId,
+  body: { protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, id:crypto.randomUUID(), correlationId:m.correlationId,
     source:NUCLEUS_ID, target:m.source, kind, capability:m.capability, payload, timestamp:Date.now() }
 });
 
@@ -38,7 +40,7 @@ export default async function handler(req:any,res:any) {
 
   const m: unknown = req.body;
   if (!validMessage(m)) return res.status(400).json({ error:'INVALID_SOUL_MESH_MESSAGE' });
-  if (m.kind !== 'request') return res.status(202).json({ accepted:true, correlationId:m.correlationId, source:NUCLEUS_ID, target:m.source });
+  if (m.kind !== 'request') return res.status(202).json({ accepted:true, correlationId:m.correlationId, source:NUCLEUS_ID, target:m.source, contractVersion:SOUL_MESH_CONTRACT_VERSION });
 
   if (m.capability === 'mesh.ping' || m.capability === 'mesh.health') {
     const out = envelope(m, 'response', { ok:true, nucleus:NUCLEUS_ID, handler:m.capability, processedAt:Date.now() });
@@ -46,7 +48,7 @@ export default async function handler(req:any,res:any) {
   }
   if (m.capability === 'mesh.describe') {
     const out = envelope(m, 'response', {
-      nucleus:NUCLEUS_ID, peers:[...PEERS], protocol:'soul-mesh/1', status:'online',
+      nucleus:NUCLEUS_ID, peers:[...PEERS], protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, status:'online',
       declaredCapabilities:SOUL_MESH_CAPABILITIES.map(c => c.id),
       executableCapabilities:n02CapabilityRuntime.listExecutable(),
       agents:n02AgentRegistry.list().map(agent => ({ id:agent.id, capabilities:agent.capabilities })),
