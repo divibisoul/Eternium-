@@ -1,8 +1,8 @@
 import { SOUL_MESH_CAPABILITIES } from './SoulMeshCapabilities';
-import { n02CapabilityRuntime } from './N02CapabilityRuntime';
 
 /** Canonical machine-readable N02 manifest used by peer discovery. */
-export function getN02MeshManifest() {
+export function getN02MeshManifest(executableCapabilities: string[] = []) {
+  const executable = new Set(executableCapabilities);
   return {
     protocol: 'soul-mesh/1' as const,
     nucleus: 'N02' as const,
@@ -15,8 +15,8 @@ export function getN02MeshManifest() {
       events: c.events,
       context: c.context ?? [],
       tools: c.tools ?? [],
-      executable: n02CapabilityRuntime.has(c.id),
+      executable: executable.has(c.id),
     })),
-    executableCapabilities: n02CapabilityRuntime.listExecutable(),
+    executableCapabilities: [...executable].sort(),
   };
 }
