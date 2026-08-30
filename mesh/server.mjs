@@ -53,9 +53,9 @@ function resultEnvelope(request, type, payload) {
   return meshSecret ? { ...envelope, hmac: signEnvelope(envelope, meshSecret) } : envelope;
 }
 
-function normalizeLegacyRequest(message) {
+export function normalizeLegacyRequest(message, allowUnsignedLegacy = !meshSecret) {
   if (!message || message.protocol !== 'soul-mesh/1') return message;
-  if (meshSecret) throw new Error('LEGACY_MESH_REQUIRES_CANONICAL_SIGNED_ENVELOPE');
+  if (!allowUnsignedLegacy) throw new Error('LEGACY_MESH_REQUIRES_CANONICAL_SIGNED_ENVELOPE');
   const capability = message.capability || message.payload?.capability;
   return {
     version: SOUL_MESH_VERSION,
@@ -70,7 +70,7 @@ function normalizeLegacyRequest(message) {
   };
 }
 
-function legacyResponse(request, payload, kind = 'response') {
+export function legacyResponse(request, payload, kind = 'response') {
   return {
     protocol: 'soul-mesh/1',
     id: randomUUID(),
