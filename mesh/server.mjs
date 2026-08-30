@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { GoogleGenAI } from '@google/genai';
 import { CAPABILITIES, NUCLEUS_ID, SOUL_MESH_VERSION, isValidEnvelope, getCapability } from './protocol.mjs';
 import { signEnvelope, verifyEnvelope } from './security.mjs';
+import { legacyResponse, normalizeLegacyRequest } from './compatibility.mjs';
 
 const port = Number(process.env.MESH_PORT || 8082);
 const apiKey = process.env.API_KEY || process.env.GEMINI_API_KEY;
@@ -53,37 +54,6 @@ function resultEnvelope(request, type, payload) {
   return meshSecret ? { ...envelope, hmac: signEnvelope(envelope, meshSecret) } : envelope;
 }
 
-export function normalizeLegacyRequest(message, allowUnsignedLegacy = !meshSecret) {
-  if (!message || message.protocol !== 'soul-mesh/1') return message;
-  if (!allowUnsignedLegacy) throw new Error('LEGACY_MESH_REQUIRES_CANONICAL_SIGNED_ENVELOPE');
-  const capability = message.capability || message.payload?.capability;
-  return {
-    version: SOUL_MESH_VERSION,
-    messageId: message.id || randomUUID(),
-    source: message.source,
-    target: NUCLEUS_ID,
-    timestamp: Number(message.timestamp) || Date.now(),
-    nonce: randomUUID(),
-    correlationId: message.correlationId,
-    type: message.kind === 'request' ? 'CAPABILITY_REQUEST' : 'TASK',
-    payload: { capability, ...(message.payload && typeof message.payload === 'object' && !Array.isArray(message.payload) ? message.payload : { payload: message.payload }) },
-  };
-}
-
-export function legacyResponse(request, payload, kind = 'response') {
-  return {
-    protocol: 'soul-mesh/1',
-    id: randomUUID(),
-    correlationId: request.correlationId,
-    source: NUCLEUS_ID,
-    target: request.source,
-    kind,
-    capability: getCapability(request),
-    payload,
-    timestamp: Date.now(),
-  };
-}
-
 async function execute(envelope) {
   const capability = getCapability(envelope);
   if (capability === 'audio.transcribe') {
@@ -118,7 +88,7 @@ const server = createServer(async (req, res) => {
     if (req.method === 'POST' && (req.url === '/mesh/in' || req.url === '/api/soul-mesh')) {
       const incoming = await readBody(req);
       const legacy = incoming?.protocol === 'soul-mesh/1';
-      const envelope = legacy ? normalizeLegacyRequest(incoming) : incoming;
+      const envelope = legacy ? normalizeLegacyRequest(incoming, !meshSecret) : incoming;
       if (!isValidEnvelope(envelope)) return json(res, 400, { protocol: 'soul-mesh/1', error: 'invalid Soul Mesh envelope' });
       if (envelope.target !== NUCLEUS_ID && envelope.target !== 'BROADCAST') return json(res, 404, { error: 'target nucleus not N02' });
       if (meshSecret) verifyEnvelope(envelope, meshSecret, { seenNonces });
