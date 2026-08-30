@@ -53,6 +53,37 @@ function resultEnvelope(request, type, payload) {
   return meshSecret ? { ...envelope, hmac: signEnvelope(envelope, meshSecret) } : envelope;
 }
 
+function normalizeLegacyRequest(message) {
+  if (!message || message.protocol !== 'soul-mesh/1') return message;
+  if (meshSecret) throw new Error('LEGACY_MESH_REQUIRES_CANONICAL_SIGNED_ENVELOPE');
+  const capability = message.capability || message.payload?.capability;
+  return {
+    version: SOUL_MESH_VERSION,
+    messageId: message.id || randomUUID(),
+    source: message.source,
+    target: NUCLEUS_ID,
+    timestamp: Number(message.timestamp) || Date.now(),
+    nonce: randomUUID(),
+    correlationId: message.correlationId,
+    type: message.kind === 'request' ? 'CAPABILITY_REQUEST' : 'TASK',
+    payload: { capability, ...(message.payload && typeof message.payload === 'object' && !Array.isArray(message.payload) ? message.payload : { payload: message.payload }) },
+  };
+}
+
+function legacyResponse(request, payload, kind = 'response') {
+  return {
+    protocol: 'soul-mesh/1',
+    id: randomUUID(),
+    correlationId: request.correlationId,
+    source: NUCLEUS_ID,
+    target: request.source,
+    kind,
+    capability: getCapability(request),
+    payload,
+    timestamp: Date.now(),
+  };
+}
+
 async function execute(envelope) {
   const capability = getCapability(envelope);
   if (capability === 'audio.transcribe') {
@@ -84,16 +115,24 @@ const server = createServer(async (req, res) => {
       if (body.nucleusId && body.nucleusId !== NUCLEUS_ID) return json(res, 400, { error: 'N02 identity mismatch' });
       return json(res, 200, registry);
     }
-    if (req.method === 'POST' && req.url === '/mesh/in') {
-      const envelope = await readBody(req);
+    if (req.method === 'POST' && (req.url === '/mesh/in' || req.url === '/api/soul-mesh')) {
+      const incoming = await readBody(req);
+      const legacy = incoming?.protocol === 'soul-mesh/1';
+      const envelope = legacy ? normalizeLegacyRequest(incoming) : incoming;
       if (!isValidEnvelope(envelope)) return json(res, 400, { protocol: 'soul-mesh/1', error: 'invalid Soul Mesh envelope' });
       if (envelope.target !== NUCLEUS_ID && envelope.target !== 'BROADCAST') return json(res, 404, { error: 'target nucleus not N02' });
       if (meshSecret) verifyEnvelope(envelope, meshSecret, { seenNonces });
       else if (envelope.hmac) return json(res, 401, { error: 'SOUL_MESH_SECRET is not configured' });
       const capability = getCapability(envelope);
-      if (!capability || !CAPABILITIES.includes(capability)) return json(res, 404, resultEnvelope(envelope, 'ERROR', { error: 'capability unavailable', capability }));
+      if (!capability || !CAPABILITIES.includes(capability)) {
+        return legacy
+          ? json(res, 404, legacyResponse(envelope, { error: 'capability unavailable', capability }, 'error'))
+          : json(res, 404, resultEnvelope(envelope, 'ERROR', { error: 'capability unavailable', capability }));
+      }
       const result = await execute(envelope);
-      return json(res, 200, resultEnvelope(envelope, 'TASK_RESULT', { capability, result }));
+      return legacy
+        ? json(res, 200, legacyResponse(envelope, { capability, result }))
+        : json(res, 200, resultEnvelope(envelope, 'TASK_RESULT', { capability, result }));
     }
     return json(res, 404, { error: 'route not found' });
   } catch (error) {
