@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "mesh:n02": "node mesh/server.mjs"
   },
   "dependencies": {
     "react-dom": "^19.1.0",
