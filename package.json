@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "mesh:n02": "node mesh/server.mjs"
+    "mesh:n02": "node mesh/server.mjs",
+    "test:mesh-compatibility": "node mesh/compatibility.test.mjs"
   },
   "dependencies": {
     "react-dom": "^19.1.0",
