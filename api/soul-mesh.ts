@@ -6,6 +6,9 @@ const NUCLEUS_ID = 'N02' as const;
 const NUCLEI = new Set(['N01', 'N02', 'N03', 'N04', 'N05', 'N06']);
 const PEERS = ['N01', 'N03', 'N04', 'N05', 'N06'] as const;
 const MAX_BODY_BYTES = 1_000_000;
+const MAX_CLOCK_SKEW_MS = 30_000;
+const REPLAY_WINDOW_MS = 5 * 60_000;
+const seenRequests = new Map<string, number>();
 
 type MeshMessage = {
   protocol: 'soul-mesh/1'; contractVersion: string; id: string; correlationId: string;
@@ -23,7 +26,16 @@ function validMessage(m: unknown): m is MeshMessage {
     && x.target === NUCLEUS_ID && x.source !== NUCLEUS_ID
     && ['request','response','event','error'].includes(String(x.kind))
     && (!x.capability || (typeof x.capability === 'string' && x.capability.length <= 200))
-    && typeof x.timestamp === 'number' && Number.isFinite(x.timestamp);
+    && typeof x.timestamp === 'number' && Number.isFinite(x.timestamp)
+    && Math.abs(Date.now() - Number(x.timestamp)) <= MAX_CLOCK_SKEW_MS;
+}
+
+function acceptOnce(id: string): boolean {
+  const now = Date.now();
+  for (const [key, timestamp] of seenRequests) if (now - timestamp > REPLAY_WINDOW_MS) seenRequests.delete(key);
+  if (seenRequests.has(id)) return false;
+  seenRequests.set(id, now);
+  return true;
 }
 
 const envelope = (m: MeshMessage, kind: 'response'|'error', payload: unknown, status = 200) => ({
@@ -41,6 +53,7 @@ export default async function handler(req:any,res:any) {
   const m: unknown = req.body;
   if (!validMessage(m)) return res.status(400).json({ error:'INVALID_SOUL_MESH_MESSAGE' });
   if (m.kind !== 'request') return res.status(202).json({ accepted:true, correlationId:m.correlationId, source:NUCLEUS_ID, target:m.source, contractVersion:SOUL_MESH_CONTRACT_VERSION });
+  if (!acceptOnce(m.id)) return res.status(409).json({ error:'REPLAY_DETECTED', correlationId:m.correlationId });
 
   if (m.capability === 'mesh.ping' || m.capability === 'mesh.health') {
     const out = envelope(m, 'response', { ok:true, nucleus:NUCLEUS_ID, handler:m.capability, processedAt:Date.now() });
