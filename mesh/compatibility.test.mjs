@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { getCapability } from './protocol.mjs';
-import { legacyResponse, normalizeLegacyRequest } from './server.mjs';
+import { legacyResponse, normalizeLegacyRequest } from './compatibility.mjs';
 
 const request = {
   protocol: 'soul-mesh/1',
