@@ -50,7 +50,7 @@ async function fallbackToGemini(options: FastInferenceOptions): Promise<FastInfe
   return { text, provider: 'google-gemini', model };
 }
 
-/** Server-side only. Groq is attempted first; quota/capacity/provider failures fall back to Gemini. */
+/** Server-side only. Groq is attempted first; provider/quota/capacity failures fall back to Gemini. */
 export async function generateFastInference(options: FastInferenceOptions): Promise<FastInferenceResult> {
   const apiKey = process.env.GROQ_API_KEY?.trim();
   if (!apiKey) return fallbackToGemini(options);
@@ -65,7 +65,7 @@ export async function generateFastInference(options: FastInferenceOptions): Prom
       max_completion_tokens: options.maxCompletionTokens,
     });
     const text = response.choices[0]?.message?.content?.trim();
-    if (!text) throw new Error('GROQ_EMPTY_RESPONSE');
+    if (!text) return fallbackToGemini(options);
     return { text, provider: 'groq', model };
   } catch (error) {
     if (groqIsUnavailable(error)) return fallbackToGemini(options);
