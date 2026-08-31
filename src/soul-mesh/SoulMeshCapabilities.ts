@@ -13,6 +13,10 @@ export type SoulMeshCapability = {
 /** N02-owned AI capabilities. Declaration describes the contract; runtime registration determines executability. */
 export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
   {
+    id: 'mesh.handshake', version: '1.1', description: 'N02 canonical Mesh handshake and capability discovery',
+    request: true, response: true, events: false, owner: 'N02', context: [], tools: []
+  },
+  {
     id: 'cognitive-processing', version: '1.0', description: 'N02 cognitive processing services',
     request: true, response: true, events: true, owner: 'N02', context: ['request', 'conversation'], tools: []
   },
