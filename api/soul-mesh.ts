@@ -19,7 +19,7 @@ type MeshMessage = {
 function validMessage(m: unknown): m is MeshMessage {
   if (!m || typeof m !== 'object') return false;
   const x = m as Record<string, unknown>;
-  return x.protocol === 'soul-mesh/1' && typeof x.contractVersion === 'string' && x.contractVersion.length > 0
+  return x.protocol === 'soul-mesh/1' && x.contractVersion === SOUL_MESH_CONTRACT_VERSION
     && typeof x.id === 'string' && x.id.length <= 200
     && typeof x.correlationId === 'string' && x.correlationId.length <= 200
     && typeof x.source === 'string' && NUCLEI.has(x.source)
@@ -55,6 +55,13 @@ export default async function handler(req:any,res:any) {
   if (m.kind !== 'request') return res.status(202).json({ accepted:true, correlationId:m.correlationId, source:NUCLEUS_ID, target:m.source, contractVersion:SOUL_MESH_CONTRACT_VERSION });
   if (!acceptOnce(m.id)) return res.status(409).json({ error:'REPLAY_DETECTED', correlationId:m.correlationId });
 
+  if (m.capability === 'mesh.handshake') {
+    const out = envelope(m, 'response', {
+      nucleus: NUCLEUS_ID, protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION,
+      status:'online', capabilities:SOUL_MESH_CAPABILITIES.map(c => c.id), transports:['http','supabase-realtime','memory/test']
+    });
+    return res.status(out.status).json(out.body);
+  }
   if (m.capability === 'mesh.ping' || m.capability === 'mesh.health') {
     const out = envelope(m, 'response', { ok:true, nucleus:NUCLEUS_ID, handler:m.capability, processedAt:Date.now() });
     return res.status(out.status).json(out.body);
