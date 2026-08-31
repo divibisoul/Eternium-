@@ -33,9 +33,9 @@ function toPrompt(messages: readonly GroqMessage[]): string {
 }
 
 async function fallbackToGemini(options: FastInferenceOptions): Promise<FastInferenceResult> {
-  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  const apiKey = (process.env.GEMINI_API_KEY || process.env.API_KEY || '').trim();
   if (!apiKey) throw new Error('GEMINI_API_KEY_REQUIRED_FOR_GROQ_FALLBACK');
-  const model = process.env.GEMINI_MODEL || 'gemini-3.7-flash';
+  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   const client = new GoogleGenAI({ apiKey });
   const response = await client.models.generateContent({
     model,
@@ -68,7 +68,7 @@ export async function generateFastInference(options: FastInferenceOptions): Prom
     if (!text) throw new Error('GROQ_EMPTY_RESPONSE');
     return { text, provider: 'groq', model };
   } catch (error) {
-    if (groqIsUnavailable(error) || error instanceof Error) return fallbackToGemini(options);
+    if (groqIsUnavailable(error)) return fallbackToGemini(options);
     throw error;
   }
 }
