@@ -2,10 +2,18 @@ name: Soul Mesh CI
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+      SOUL_MESH_TOKEN: ${{ secrets.SOUL_MESH_TOKEN }}
+      SOUL_MESH_HMAC_SECRET: ${{ secrets.SOUL_MESH_HMAC_SECRET }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -14,5 +22,7 @@ jobs:
       - run: npm install
       - name: Typecheck Mesh adapter
         run: npx tsc -p tsconfig.mesh.json --noEmit
+      - name: Live Groq API check
+        run: node scripts/test-groq-api.mjs
       - name: Build web runtime
         run: npm run build
