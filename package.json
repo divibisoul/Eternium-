@@ -5,13 +5,15 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "dev:full": "npx vercel dev",
+    "build": "tsc --noEmit && vite build",
     "preview": "vite preview"
   },
   "dependencies": {
     "react-dom": "^19.1.0",
     "react": "^19.1.0",
-    "@google/genai": "^1.10.0"
+    "@google/genai": "^1.10.0",
+    "@supabase/supabase-js": "^2.54.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

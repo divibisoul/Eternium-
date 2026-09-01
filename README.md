@@ -1,20 +1,24 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://github.com/user-attachments/assets/0aa67016-6eaf-458a-adb2-6e31a0763ed6" />
-</div>
+# Aeternum — N02
 
-# Run and deploy your AI Studio app
+Aplicação web do N02 com runtime visual em Vite/React e integração Gemini protegida por endpoint server-side.
 
-This contains everything you need to run your app locally.
+## Desenvolvimento
 
-View your app in AI Studio: https://ai.studio/apps/drive/1oLC5APReex5zY2I8JWoPBmioA1xnWCcH
+Para executar somente a interface local:
 
-## Run Locally
+```sh
+npm install
+npm run dev
+```
 
-**Prerequisites:**  Node.js
+Para executar a interface junto dos endpoints `api/` usados pelo runtime Gemini/Mesh, utilize um ambiente compatível com as funções serverless do projeto (por exemplo `npx vercel dev`).
 
+Configure `GEMINI_API_KEY` somente no ambiente server-side. A chave **não** deve ser colocada em variáveis `VITE_*`, pois valores `VITE_*` são destinados ao bundle do navegador.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## Build
+
+```sh
+npm run build
+```
+
+O build executa `tsc --noEmit` antes do `vite build`, cobrindo também os handlers TypeScript do backend no escopo do projeto.

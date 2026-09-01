@@ -1,13 +1,11 @@
-
 import { useState, useEffect, useRef } from 'react';
+import type { Dispatch, SetStateAction } from 'react';
 
-function usePersistentState<T>(key: string, defaultValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
+function usePersistentState<T>(key: string, defaultValue: T): [T, Dispatch<SetStateAction<T>>] {
     const [state, setState] = useState<T>(() => {
         try {
             const storedValue = window.localStorage.getItem(key);
-            if (storedValue) {
-                return JSON.parse(storedValue);
-            }
+            if (storedValue) return JSON.parse(storedValue) as T;
         } catch (error) {
             console.error(`Erro ao ler a chave do localStorage “${key}”:`, error);
         }
@@ -17,13 +15,7 @@ function usePersistentState<T>(key: string, defaultValue: T): [T, React.Dispatch
     const timeoutRef = useRef<number | null>(null);
 
     useEffect(() => {
-        if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-        }
-
-        // Agenda a operação de escrita no localStorage para ser executada de forma assíncrona,
-        // prevenindo o bloqueio da UI durante atualizações de estado frequentes ou pesadas.
-        // Um curto debounce (300ms) agrupa múltiplas atualizações rápidas em uma única operação de escrita.
+        if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
         timeoutRef.current = window.setTimeout(() => {
             try {
                 window.localStorage.setItem(key, JSON.stringify(state));
@@ -33,9 +25,7 @@ function usePersistentState<T>(key: string, defaultValue: T): [T, React.Dispatch
         }, 300);
 
         return () => {
-            if (timeoutRef.current) {
-                clearTimeout(timeoutRef.current);
-            }
+            if (timeoutRef.current !== null) window.clearTimeout(timeoutRef.current);
         };
     }, [key, state]);
 
