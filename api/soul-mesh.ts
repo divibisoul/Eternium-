@@ -20,13 +20,15 @@ type MeshMessage = {
 function validMessage(m: unknown): m is MeshMessage {
   if (!m || typeof m !== 'object') return false;
   const x = m as Record<string, unknown>;
+  const kind = String(x.kind);
   return x.protocol === 'soul-mesh/1' && x.contractVersion === SOUL_MESH_CONTRACT_VERSION
-    && typeof x.id === 'string' && x.id.length <= 200
-    && typeof x.correlationId === 'string' && x.correlationId.length <= 200
+    && typeof x.id === 'string' && x.id.length > 0 && x.id.length <= 200
+    && typeof x.correlationId === 'string' && x.correlationId.length > 0 && x.correlationId.length <= 200
     && typeof x.source === 'string' && NUCLEI.has(x.source)
     && x.target === NUCLEUS_ID && x.source !== NUCLEUS_ID
-    && ['request','response','event','error'].includes(String(x.kind))
-    && (!x.capability || (typeof x.capability === 'string' && x.capability.length <= 200))
+    && ['request','response','event','error'].includes(kind)
+    && (kind !== 'request' || (typeof x.capability === 'string' && x.capability.trim().length > 0 && x.capability.length <= 200))
+    && (kind === 'request' || x.capability === undefined || (typeof x.capability === 'string' && x.capability.length <= 200))
     && typeof x.timestamp === 'number' && Number.isFinite(x.timestamp)
     && Math.abs(Date.now() - Number(x.timestamp)) <= MAX_CLOCK_SKEW_MS;
 }
@@ -64,7 +66,7 @@ export default async function handler(req:any,res:any) {
   if (m.capability === 'mesh.handshake') {
     const out = envelope(m, 'response', {
       nucleus: NUCLEUS_ID, protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION,
-      status:'online', capabilities:SOUL_MESH_CAPABILITIES.map(c => c.id), transports:['http','supabase-realtime','memory/test']
+      status:'online', capabilities:SOUL_MESH_CAPABILITIES.map(c => c.id), transports:['http','supabase-realtime']
     });
     return res.status(out.status).json(out.body);
   }
@@ -78,7 +80,7 @@ export default async function handler(req:any,res:any) {
       declaredCapabilities:SOUL_MESH_CAPABILITIES.map(c => c.id),
       executableCapabilities:n02CapabilityRuntime.listExecutable(),
       agents:n02AgentRegistry.list().map(agent => ({ id:agent.id, capabilities:agent.capabilities })),
-      transports:['http','supabase-realtime','memory/test'],
+      transports:['http','supabase-realtime'],
       channels:{ in:PEERS.map(p=>`N02.IN.${p}`), out:PEERS.map(p=>`N02.OUT.${p}`) },
     });
     return res.status(out.status).json(out.body);
