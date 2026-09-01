@@ -1,6 +1,11 @@
 name: Soul Mesh CI
 on:
   push:
+    branches:
+      - main
+      - 'feature/**'
+      - 'upgrade/**'
+  pull_request:
     branches: [ main ]
   workflow_dispatch:
 permissions:
@@ -14,7 +19,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+      - run: npm ci
+      - name: Validate Mesh compatibility adapter
+        run: npm run test:mesh-compatibility
       - name: Typecheck Mesh adapter
         run: npx tsc -p tsconfig.mesh.json --noEmit
       - name: Build web runtime
