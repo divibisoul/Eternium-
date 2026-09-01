@@ -5,6 +5,7 @@ import { n02CapabilityRuntime } from './N02CapabilityRuntime';
 export function getN02MeshManifest() {
   return {
     protocol: 'soul-mesh/1' as const,
+    contractVersion: '1.1.0' as const,
     nucleus: 'N02' as const,
     capabilities: SOUL_MESH_CAPABILITIES.map(c => ({
       id: c.id,
