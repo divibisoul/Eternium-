@@ -14,8 +14,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - run: npm install
+      - run: npm install --legacy-peer-deps --no-audit --no-fund
       - name: Typecheck Mesh adapter
         run: npx tsc -p tsconfig.mesh.json --noEmit
+      - name: Gemini reliability tests
+        run: node --experimental-strip-types services/geminiReliability.test.ts
       - name: Build web runtime
         run: npm run build
