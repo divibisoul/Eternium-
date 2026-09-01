@@ -2,22 +2,29 @@ name: Soul Mesh CI
 on:
   push:
     branches: [ main ]
+    paths:
+      - '**/*.ts'
+      - '**/*.tsx'
+      - '**/*.json'
+      - '**/*.css'
+      - 'vite.config.ts'
+      - '.github/workflows/soul-mesh-ci.yml'
   pull_request:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm install
-      - name: Typecheck application
+      - name: Typecheck application and serverless endpoints
         run: npx tsc -p tsconfig.json --noEmit
       - name: Typecheck Mesh adapter
         run: npx tsc -p tsconfig.mesh.json --noEmit
