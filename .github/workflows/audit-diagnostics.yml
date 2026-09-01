@@ -1,0 +1,42 @@
+name: Audit diagnostics
+on:
+  push:
+    branches: [audit/2026-09-01-hardening]
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Capture diagnostics
+        shell: bash
+        run: |
+          set +e
+          {
+            echo '=== node ==='; node --version; npm --version
+            echo '=== npm install ==='; npm install --legacy-peer-deps --no-audit --no-fund
+            echo "install_exit=$?"
+            for cmd in 'npx tsc -p tsconfig.json --noEmit' 'npx tsc -p tsconfig.mesh.json --noEmit' 'npm run build'; do
+              echo "=== $cmd ==="
+              eval "$cmd"
+              echo "exit=$?"
+            done
+            echo '=== services/geminiService.ts ==='; sed -n '1,320p' services/geminiService.ts
+            echo '=== api/gemini.ts ==='; sed -n '1,260p' api/gemini.ts
+            echo '=== tsconfig.json ==='; sed -n '1,240p' tsconfig.json
+            echo '=== tsconfig.mesh.json ==='; sed -n '1,240p' tsconfig.mesh.json
+          } 2>&1 | tee audit-diagnostics-n02.txt
+      - name: Commit diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add audit-diagnostics-n02.txt
+          git diff --cached --quiet && exit 0
+          git commit -m "chore(audit): capture N02 execution diagnostics [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
