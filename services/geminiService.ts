@@ -61,6 +61,15 @@ const functionalCorePrompts: Record<string, string> = {
 
 const baseSystemInstruction = `Você é Aeternum, uma IA modular. Sua personalidade e capacidades são definidas pelas personas ativas listadas abaixo. Responda de forma concisa e direta, agindo estritamente dentro da(s) persona(s) definida(s).`;
 
+class GeminiRequestError extends Error {
+  readonly retryable: boolean;
+  constructor(message: string, retryable: boolean) {
+    super(message);
+    this.name = 'GeminiRequestError';
+    this.retryable = retryable;
+  }
+}
+
 function isRetryableStatus(status: number): boolean {
   return status === 408 || status === 425 || status === 429 || status >= 500;
 }
@@ -91,7 +100,7 @@ async function callGemini(model: string, contents: unknown, config?: Record<stri
       const data = await parseJson(response);
       if (response.ok) {
         if (!isRecord(data) || typeof data.text !== 'string') {
-          throw new Error('INVALID_GEMINI_RESPONSE');
+          throw new GeminiRequestError('INVALID_GEMINI_RESPONSE', false);
         }
         return {
           text: data.text,
@@ -102,14 +111,11 @@ async function callGemini(model: string, contents: unknown, config?: Record<stri
       const message = isRecord(data) && typeof data.error === 'string'
         ? data.error
         : `HTTP_${response.status}`;
-      lastError = new Error(message);
-
-      if (!isRetryableStatus(response.status) || attempt === MAX_RETRIES) {
-        throw lastError;
-      }
+      throw new GeminiRequestError(message, isRetryableStatus(response.status));
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('UNKNOWN_GEMINI_TRANSPORT_ERROR');
-      if (attempt === MAX_RETRIES) throw lastError;
+      const retryable = error instanceof GeminiRequestError ? error.retryable : true;
+      if (!retryable || attempt === MAX_RETRIES) throw lastError;
     }
 
     const delay = INITIAL_BACKOFF_MS * 2 ** attempt;
