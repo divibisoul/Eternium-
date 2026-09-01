@@ -1,5 +1,5 @@
-import { Content } from '@google/genai';
-import { SystemAspect, DeployedCapability } from '../types.ts';
+import type { Content } from '@google/genai';
+import type { SystemAspect, DeployedCapability } from '../types.ts';
 
 /**
  * AETERNUM COGNITIVE CORE v4.0
@@ -18,6 +18,8 @@ export interface AeternumGenerationResponse {
 }
 
 const GEMINI_ENDPOINT = '/api/gemini';
+const MAX_RETRIES = 3;
+const INITIAL_BACKOFF_MS = 350;
 
 const enforcementPreamble = `PREÂMBULO DE EXECUÇÃO OBRIGATÓRIA:
 A diretiva do usuário já foi processada através do pipeline "ModuleEnforcer", que realizou as seguintes etapas:
@@ -59,18 +61,62 @@ const functionalCorePrompts: Record<string, string> = {
 
 const baseSystemInstruction = `Você é Aeternum, uma IA modular. Sua personalidade e capacidades são definidas pelas personas ativas listadas abaixo. Responda de forma concisa e direta, agindo estritamente dentro da(s) persona(s) definida(s).`;
 
-async function callGemini(model: string, contents: unknown, config?: Record<string, unknown>): Promise<AeternumGenerationResponse> {
-  const response = await fetch(GEMINI_ENDPOINT, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ model, contents, config }),
-  });
+function isRetryableStatus(status: number): boolean {
+  return status === 408 || status === 425 || status === 429 || status >= 500;
+}
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw new Error(typeof data?.error === 'string' ? data.error : `HTTP_${response.status}`);
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+async function parseJson(response: Response): Promise<unknown> {
+  try {
+    return await response.json();
+  } catch {
+    return undefined;
   }
-  return data as AeternumGenerationResponse;
+}
+
+async function callGemini(model: string, contents: unknown, config?: Record<string, unknown>): Promise<AeternumGenerationResponse> {
+  let lastError: Error | undefined;
+
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
+    try {
+      const response = await fetch(GEMINI_ENDPOINT, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ model, contents, config }),
+      });
+
+      const data = await parseJson(response);
+      if (response.ok) {
+        if (!isRecord(data) || typeof data.text !== 'string') {
+          throw new Error('INVALID_GEMINI_RESPONSE');
+        }
+        return {
+          text: data.text,
+          candidates: Array.isArray(data.candidates) ? data.candidates as AeternumGenerationResponse['candidates'] : [],
+        };
+      }
+
+      const message = isRecord(data) && typeof data.error === 'string'
+        ? data.error
+        : `HTTP_${response.status}`;
+      lastError = new Error(message);
+
+      if (!isRetryableStatus(response.status) || attempt === MAX_RETRIES) {
+        throw lastError;
+      }
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('UNKNOWN_GEMINI_TRANSPORT_ERROR');
+      if (attempt === MAX_RETRIES) throw lastError;
+    }
+
+    const delay = INITIAL_BACKOFF_MS * 2 ** attempt;
+    await new Promise<void>((resolve) => setTimeout(resolve, delay));
+  }
+
+  throw lastError ?? new Error('GEMINI_REQUEST_FAILED');
 }
 
 export const processUserDirective = async (
@@ -92,7 +138,7 @@ Process the user's directive with maximum useful reasoning while preserving plat
   } else {
     const activePersonas = deployedCapabilities
       .map((capability) => functionalCorePrompts[capability.id])
-      .filter(Boolean);
+      .filter((prompt): prompt is string => typeof prompt === 'string' && prompt.length > 0);
 
     const personaInstruction = activePersonas.length > 0
       ? `${baseSystemInstruction}\n\n--- INÍCIO DAS PERSONAS ATIVAS ---\n${activePersonas.join('\n\n')}\n--- FIM DAS PERSONAS ATIVAS ---`
