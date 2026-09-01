@@ -38,6 +38,12 @@ function acceptOnce(id: string): boolean {
   return true;
 }
 
+function meshAuthorized(req: any): boolean {
+  const token = process.env.SOUL_MESH_TOKEN?.trim();
+  if (!token) return process.env.NODE_ENV !== 'production';
+  return req.headers.authorization === `Bearer ${token}`;
+}
+
 const envelope = (m: MeshMessage, kind: 'response'|'error', payload: unknown, status = 200) => ({
   status,
   body: { protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, id:crypto.randomUUID(), correlationId:m.correlationId,
@@ -46,8 +52,7 @@ const envelope = (m: MeshMessage, kind: 'response'|'error', payload: unknown, st
 
 export default async function handler(req:any,res:any) {
   if (req.method !== 'POST') return res.status(405).json({ error:'METHOD_NOT_ALLOWED' });
-  const token = process.env.SOUL_MESH_TOKEN;
-  if (token && req.headers.authorization !== `Bearer ${token}`) return res.status(401).json({ error:'UNAUTHORIZED' });
+  if (!meshAuthorized(req)) return res.status(401).json({ error:'UNAUTHORIZED' });
   if (req.headers['content-length'] && Number(req.headers['content-length']) > MAX_BODY_BYTES) return res.status(413).json({ error:'PAYLOAD_TOO_LARGE' });
 
   const m: unknown = req.body;
