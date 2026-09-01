@@ -1,0 +1,45 @@
+name: SOUL N02 command validation
+
+on:
+  push:
+    branches: [audit/2026-09-01-hardening]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  typecheck-app:
+    name: Typecheck application
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npx tsc -p tsconfig.json --noEmit
+
+  typecheck-mesh:
+    name: Typecheck Mesh adapter
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npx tsc -p tsconfig.mesh.json --noEmit
+
+  build:
+    name: Build web runtime
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install
+      - run: npm run build
