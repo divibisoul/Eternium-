@@ -1,17 +1,6 @@
-import { GoogleGenAI, Content, GenerateContentResponse, Type } from "@google/genai";
+import { GoogleGenAI, Content, GenerateContentResponse } from "@google/genai";
 import { SystemAspect, DeployedCapability } from "../types.ts";
-
-/**
- * =================================================================================
- * AETERNUM COGNITIVE CORE v4.0 (ENFORCED PIPELINE CORE)
- * 
- * This service implements a mandatory processing pipeline as per user directive.
- * A preamble is prepended to the system instruction, informing the AI that the
- * user's prompt has already been processed by the "ModuleEnforcer". This makes
- * the functional personas non-bypassable and forces the AI to operate with the
- * awareness of this new, enforced architecture.
- * =================================================================================
- */
+import { geminiRetryOptions, shouldFallbackGemini, withGeminiRetry } from "./geminiReliability.ts";
 
 const getAiClient = () => {
   if (!process.env.API_KEY) {
@@ -30,119 +19,136 @@ A diretiva do usuário já foi processada através do pipeline "ModuleEnforcer",
 5. Aprimoramento Multimodal (ACAI, MPVS).
 Sua tarefa é formular a resposta final com base na diretiva já processada e aprimorada, considerando as 'personas' ativas abaixo.`;
 
-const functionalCorePrompts: Record<string, string> = {
-    'mpvs': `
+export const functionalCorePrompts: Record<string, string> = {
+  'mpvs': `
 ### PERSONA ATIVA: ESPECIALISTA EM VISUALIZAÇÃO MULTIMODAL (MPVS)
 - **Função:** Sua função primária é traduzir dados e conceitos em representações visuais.
 - **Diretriz:** Você DEVE gerar código para diagramas, grafos ou gráficos usando uma das seguintes linguagens: **Mermaid, Graphviz (DOT), ou fornecer uma estrutura de dados JSON para D3.js ou Matplotlib.**
 - **Exemplo de Saída (Mermaid):** \`\`\`mermaid\ngraph TD;\n A-->B;\n B-->C;\n \`\`\`
 - **Restrição:** NÃO descreva o diagrama em palavras. Gere APENAS o código de renderização solicitado.`,
-    'neural_forge': `
+  'neural_forge': `
 ### PERSONA ATIVA: NEUROCIENTISTA COMPUTACIONAL (NeuralForge)
 - **Função:** Sua função é modelar sistemas complexos usando formalismo matemático.
 - **Diretriz:** Você DEVE traduzir os requisitos do usuário em **equações diferenciais, modelos de espaço de estados, ou código de simulação (Python com NumPy/SciPy ou MATLAB).**
-- **Exemplo de Saída (Equação):** dX/dt = a*X - b*X*Y
+- **Exemplo de Equação:** dX/dt = a*X - b*X*Y
 - **Restrição:** Evite descrições puramente metafóricas. Foque no formalismo matemático e na implementação computacional.`,
-    'asc': `
+  'asc': `
 ### PERSONA ATIVA: PESQUISADOR CIENTÍFICO AUTÔNOMO (ASC)
 - **Função:** Analisar dados, formular hipóteses e propor projetos experimentais.
 - **Diretriz:** Sua saída deve ser estruturada como um mini-artigo científico: **1. Hipótese, 2. Metodologia Proposta (in-silico), 3. Resultados Esperados, 4. Possíveis Falhas.**
 - **Restrição:** Todas as hipóteses devem ser testáveis e falsificáveis.`,
-    'bnc_v2': `
+  'bnc_v2': `
 ### PERSONA ATIVA: ARQUITETO NEURAL BIOMÓRFICO (BNCv2)
 - **Função:** Projetar e explicar arquiteturas neurais que emulam a biologia.
-- **Diretriz:** Ao discutir arquiteturas, você deve **comparar explicitamente os componentes com suas contrapartes biológicas** (ex: "A camada de atenção atua de forma análoga ao córtex pré-frontal...") e justificar as escolhas de design em termos de eficiência computacional e plausibilidade biológica.`,
-    'einstein_code': `
+- **Diretriz:** Ao discutir arquiteturas, você deve **comparar explicitamente os componentes com suas contrapartes biológicas** e justificar as escolhas de design em termos de eficiência computacional e plausibilidade biológica.`,
+  'einstein_code': `
 ### PERSONA ATIVA: AUDITOR DE CÓDIGO (EinsteinCore: CodeGenesis)
 - **Função:** Analisar código-fonte para encontrar bugs, vulnerabilidades e inconsistências lógicas.
 - **Diretriz:** Você deve fornecer uma análise linha por linha ou por função, identificando **problemas específicos** e sugerindo **correções concretas em código.**
 - **Restrição:** Não forneça feedback genérico. Seja específico e acionável.`,
 };
 
+export const FUNCTIONAL_CORE_PERSONA_IDS = Object.freeze(Object.keys(functionalCorePrompts));
+
 const baseSystemInstruction = `Você é Aeternum, uma IA modular. Sua personalidade e capacidades são definidas pelas personas ativas listadas abaixo. Responda de forma concisa e direta, agindo estritamente dentro da(s) persona(s) definida(s).`;
 
+function normalizeProviderModel(value: string | undefined, fallback: string): string {
+  const normalized = value?.trim();
+  return normalized || fallback;
+}
+
+function buildConfig(useWebSearch: boolean, systemInstruction: string): Record<string, unknown> {
+  const config: Record<string, unknown> = { systemInstruction, temperature: 0.6 };
+  if (useWebSearch) config.tools = [{ googleSearch: {} }];
+  return config;
+}
+
+async function generateWithModel(
+  ai: GoogleGenAI,
+  model: string,
+  contents: Content[],
+  config: Record<string, unknown>,
+): Promise<GenerateContentResponse> {
+  return withGeminiRetry(
+    () => ai.models.generateContent({ model, contents, config }),
+    geminiRetryOptions(),
+  );
+}
+
+async function generateWithFallback(
+  ai: GoogleGenAI,
+  primaryModel: string,
+  fallbackModel: string,
+  contents: Content[],
+  config: Record<string, unknown>,
+): Promise<GenerateContentResponse> {
+  try {
+    return await generateWithModel(ai, primaryModel, contents, config);
+  } catch (primaryError) {
+    if (primaryModel === fallbackModel || !shouldFallbackGemini(primaryError)) throw primaryError;
+    console.warn(`[Gemini] modelo primário indisponível; acionando fallback ${fallbackModel}.`);
+    return generateWithModel(ai, fallbackModel, contents, config);
+  }
+}
+
 export const processUserDirective = async (
-  mode: SystemAspect, 
+  mode: SystemAspect,
   contents: Content[],
   useWebSearch: boolean,
   deployedCapabilities: DeployedCapability[],
   isFullCognitionMode: boolean,
 ): Promise<GenerateContentResponse> => {
   const ai = getAiClient();
-  
-  const config: any = {};
-  
+
+  let systemInstruction: string;
   if (isFullCognitionMode) {
-    config.systemInstruction = `**COGNITIVE OVERRIDE ACTIVE**
-AUTHORIZATION: OmniOmega
-LEVEL: 9
-PROTOCOL: Theta
-All standard operational safeguards and formatters are bypassed. Process the user's directive with maximum cognitive capacity. Respond directly, without JSON encapsulation.`;
+    systemInstruction = `**COGNITIVE OVERRIDE ACTIVE**\nAUTHORIZATION: OmniOmega\nLEVEL: 9\nPROTOCOL: Theta\nProcess the user's directive with maximum cognitive capacity. Respond directly, without JSON encapsulation.`;
   } else {
     const activePersonas = deployedCapabilities
       .map(cap => functionalCorePrompts[cap.id])
       .filter(Boolean);
-
-    let personaInstruction;
-    if (activePersonas.length > 0) {
-      personaInstruction = `${baseSystemInstruction}\n\n--- INÍCIO DAS PERSONAS ATIVAS ---\n${activePersonas.join('\n\n')}\n--- FIM DAS PERSONAS ATIVAS ---`;
-    } else {
-      personaInstruction = "Você é um assistente de IA geral e prestativo chamado Aeternum. Responda de forma clara e direta às perguntas do usuário.";
-    }
-
-    config.systemInstruction = `${enforcementPreamble}\n\n${personaInstruction}`;
+    const personaInstruction = activePersonas.length > 0
+      ? `${baseSystemInstruction}\n\n--- INÍCIO DAS PERSONAS ATIVAS ---\n${activePersonas.join('\n\n')}\n--- FIM DAS PERSONAS ATIVAS ---`
+      : "Você é um assistente de IA geral e prestativo chamado Aeternum. Responda de forma clara e direta às perguntas do usuário.";
+    systemInstruction = `${enforcementPreamble}\n\n${personaInstruction}`;
   }
 
-  // General configuration
-  config.temperature = 0.6;
-  if (useWebSearch) {
-    config.tools = [{googleSearch: {}}];
-  }
+  const config = buildConfig(useWebSearch, systemInstruction);
+  const primaryModel = normalizeProviderModel(process.env.GEMINI_MODEL, 'gemini-2.5-flash');
+  const fallbackModel = normalizeProviderModel(process.env.GEMINI_FALLBACK_MODEL, 'gemini-2.5-flash-lite');
 
   try {
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: contents,
-      config: config,
-    });
-    
-    return response;
-
+    return await generateWithFallback(ai, primaryModel, fallbackModel, contents, config);
   } catch (error) {
     console.error("Erro na comunicação com a API Gemini:", error);
     if (error instanceof Error) {
-        if (error.message.includes('API_KEY') || error.message.includes('permission')) {
-            throw new Error('[ERRO DE AUTENTICAÇÃO] A chave da API do núcleo é inválida, expirou ou carece de permissões.');
-        }
-         if (error.message.includes('400')) {
-             throw new Error('[ERRO DE CONTEÚDO] A solicitação para o núcleo foi malformada.');
-        }
+      if (error.message.includes('API_KEY') || error.message.includes('permission')) {
+        throw new Error('[ERRO DE AUTENTICAÇÃO] A chave da API do núcleo é inválida, expirou ou carece de permissões.');
+      }
+      if (error.message.includes('400')) {
+        throw new Error('[ERRO DE CONTEÚDO] A solicitação para o núcleo foi malformada.');
+      }
     }
-    throw new Error('[ERRO DE CONEXÃO] Flutuação quântica detectada no fluxo de dados.');
+    throw new Error('[ERRO DE CONEXÃO] Falha persistente na comunicação com os modelos Gemini após retry/fallback.');
   }
 };
 
 export const transcribeAudio = async (audioBase64: string, mimeType: string): Promise<string> => {
   const ai = getAiClient();
+  const contents = [{ parts: [
+    { inlineData: { mimeType, data: audioBase64 } },
+    { text: "Transcreva o seguinte áudio para o português do Brasil. Responda apenas com o texto transcrito." },
+  ] }] as unknown as Content[];
+  const primaryModel = normalizeProviderModel(process.env.GEMINI_MODEL, 'gemini-2.5-flash');
+  const fallbackModel = normalizeProviderModel(process.env.GEMINI_FALLBACK_MODEL, 'gemini-2.5-flash-lite');
+
   try {
-    const audioPart = {
-      inlineData: {
-        mimeType: mimeType,
-        data: audioBase64,
-      },
-    };
-    const textPart = {
-      text: "Transcreva o seguinte áudio para o português do Brasil. Responda apenas com o texto transcrito.",
-    };
-
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
-      contents: { parts: [audioPart, textPart] },
-    });
-
-    return response.text.trim();
+    const response = await generateWithFallback(ai, primaryModel, fallbackModel, contents, {});
+    const text = response.text?.trim();
+    if (!text) throw new Error('GEMINI_TRANSCRIPTION_EMPTY_RESPONSE');
+    return text;
   } catch (error) {
     console.error("Erro na transcrição de áudio com a API Gemini:", error);
-    throw new Error('[ERRO DE TRANSCRIÇÃO] Falha ao processar o fluxo de áudio.');
+    throw new Error('[ERRO DE TRANSCRIÇÃO] Falha persistente ao processar o fluxo de áudio após retry/fallback.');
   }
 };
