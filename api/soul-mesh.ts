@@ -3,8 +3,8 @@ import { SOUL_MESH_CONTRACT_VERSION } from '../src/soul-mesh/SoulMeshProtocol';
 import { n02CapabilityRuntime, executeN02Agent, n02AgentRegistry } from '../src/soul-mesh/N02CapabilityRuntime';
 
 const NUCLEUS_ID = 'N02' as const;
-const NUCLEI = new Set(['N01', 'N02', 'N03', 'N04', 'N05', 'N06']);
-const PEERS = ['N01', 'N03', 'N04', 'N05', 'N06'] as const;
+const NUCLEI = new Set(['N01', 'N02', 'N03', 'N04', 'N05', 'N06', 'N07']);
+const PEERS = ['N01', 'N03', 'N04', 'N05', 'N06', 'N07'] as const;
 const MAX_BODY_BYTES = 1_000_000;
 const MAX_CLOCK_SKEW_MS = 30_000;
 const REPLAY_WINDOW_MS = 5 * 60_000;
@@ -12,8 +12,9 @@ const seenRequests = new Map<string, number>();
 
 type MeshMessage = {
   protocol: 'soul-mesh/1'; contractVersion: string; id: string; correlationId: string;
-  source: 'N01'|'N02'|'N03'|'N04'|'N05'|'N06'; target: 'N01'|'N02'|'N03'|'N04'|'N05'|'N06';
+  source: 'N01'|'N02'|'N03'|'N04'|'N05'|'N06'|'N07'; target: 'N01'|'N02'|'N03'|'N04'|'N05'|'N06'|'N07';
   kind: 'request'|'response'|'event'|'error'; capability?: string; payload: unknown; timestamp: number;
+  meta?: { runtime?: string; transport?: string; encoding?: string; version?: string; nonce?: string; traceId?: string };
 };
 
 function validMessage(m: unknown): m is MeshMessage {
@@ -47,7 +48,7 @@ function meshAuthorized(req: any): boolean {
 const envelope = (m: MeshMessage, kind: 'response'|'error', payload: unknown, status = 200) => ({
   status,
   body: { protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, id:crypto.randomUUID(), correlationId:m.correlationId,
-    source:NUCLEUS_ID, target:m.source, kind, capability:m.capability, payload, timestamp:Date.now() }
+    source:NUCLEUS_ID, target:m.source, kind, capability:m.capability, payload, timestamp:Date.now(), meta:{runtime:'Eternium-',transport:'HTTP',encoding:'json',version:SOUL_MESH_CONTRACT_VERSION,traceId:m.meta?.traceId??m.correlationId,nonce:crypto.randomUUID()} }
 });
 
 export default async function handler(req:any,res:any) {
