@@ -27,8 +27,10 @@ jobs:
           cache: npm
       - name: Verify toolchain
         run: node --version && npm --version
-      - name: Install dependencies from lockfile
-        run: npm ci --no-audit --no-fund
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Lint and type validation
+        run: npm run lint
       - name: Build
         run: npm run build
       - name: Emergency diagnostics
