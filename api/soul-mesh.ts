@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
 import { SOUL_MESH_CAPABILITIES } from '../src/soul-mesh/SoulMeshCapabilities';
 import { SOUL_MESH_CONTRACT_VERSION } from '../src/soul-mesh/SoulMeshProtocol';
 import { n02CapabilityRuntime, executeN02Agent, n02AgentRegistry } from '../src/soul-mesh/N02CapabilityRuntime';
@@ -17,6 +17,27 @@ type MeshMessage = {
   kind: 'request'|'response'|'event'|'error'; capability?: string; payload: unknown; timestamp: number;
   meta?: { runtime?: string; transport?: string; encoding?: string; version?: string; nonce?: string; traceId?: string };
 };
+
+function normalizeInbound(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') return raw;
+  const x = raw as Record<string, unknown>;
+  if (x.protocol !== 'soul-mesh/1') return raw;
+  if (typeof x.kind === 'string') return raw;
+  const sourceMap: Record<string, string> = { N1: 'N01', N2: 'N02', N3: 'N03', N4: 'N04', N5: 'N05', N6: 'N06', N7: 'N07' };
+  const source = typeof x.source === 'string' ? (sourceMap[x.source] ?? x.source) : x.source;
+  const target = typeof x.target === 'string' ? (sourceMap[x.target] ?? x.target) : x.target;
+  const action = typeof x.action === 'string' ? x.action : 'mesh.ping';
+  const capability = action === 'ping' ? 'mesh.ping' : action === 'health' ? 'mesh.health' : action;
+  return {
+    protocol: 'soul-mesh/1',
+    contractVersion: typeof x.contractVersion === 'string' ? x.contractVersion : SOUL_MESH_CONTRACT_VERSION,
+    id: typeof x.id === 'string' && x.id ? x.id : randomUUID(),
+    correlationId: typeof x.correlationId === 'string' && x.correlationId ? x.correlationId : randomUUID(),
+    source, target, kind: 'request', capability,
+    payload: x.payload ?? x.data ?? {}, timestamp: typeof x.timestamp === 'number' ? x.timestamp : Date.now(),
+    meta: { transport: 'HTTP', encoding: 'json', version: typeof x.contractVersion === 'string' ? x.contractVersion : SOUL_MESH_CONTRACT_VERSION },
+  };
+}
 
 function validMessage(m: unknown): m is MeshMessage {
   if (!m || typeof m !== 'object') return false;
@@ -70,10 +91,10 @@ function meshAuthorized(req: any, message: MeshMessage): boolean {
 }
 
 const envelope = (m: MeshMessage, kind: 'response'|'error', payload: unknown, status = 200) => {
-  const nonce = crypto.randomUUID();
+  const nonce = randomUUID();
   return {
     status,
-    body: { protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, id:crypto.randomUUID(), correlationId:m.correlationId,
+    body: { protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, id:randomUUID(), correlationId:m.correlationId,
       source:NUCLEUS_ID, target:m.source, kind, capability:m.capability, payload, timestamp:Date.now(), meta:{runtime:'Eternium-',transport:'HTTP',encoding:'json',version:SOUL_MESH_CONTRACT_VERSION,traceId:m.meta?.traceId??m.correlationId,nonce} }
   };
 };
@@ -82,8 +103,10 @@ export default async function handler(req:any,res:any) {
   if (req.method !== 'POST') return res.status(405).json({ error:'METHOD_NOT_ALLOWED' });
   if (req.headers['content-length'] && Number(req.headers['content-length']) > MAX_BODY_BYTES) return res.status(413).json({ error:'PAYLOAD_TOO_LARGE' });
 
-  const m: unknown = req.body;
+  const m: unknown = normalizeInbound(req.body);
   if (!validMessage(m)) return res.status(400).json({ error:'INVALID_SOUL_MESH_MESSAGE' });
+  const headerCorrelation = String(req.headers['x-soul-correlation-id'] ?? '').trim();
+  if (headerCorrelation && headerCorrelation !== m.correlationId) return res.status(400).json({ error:'CORRELATION_ID_MISMATCH', correlationId:m.correlationId });
   if (!meshAuthorized(req, m)) return res.status(401).json({ error:'UNAUTHORIZED' });
   if (m.kind !== 'request') return res.status(202).json({ accepted:true, correlationId:m.correlationId, source:NUCLEUS_ID, target:m.source, contractVersion:SOUL_MESH_CONTRACT_VERSION });
   if (!acceptOnce(m.id)) return res.status(409).json({ error:'REPLAY_DETECTED', correlationId:m.correlationId });
@@ -101,7 +124,7 @@ export default async function handler(req:any,res:any) {
   }
   if (m.capability === 'mesh.describe') {
     const out = envelope(m, 'response', {
-      nucleus:NUCLEUS_ID, peers:[...PEERS], protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, status:'online',
+      nucleus: NUCLEUS_ID, peers:[...PEERS], protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, status:'online',
       declaredCapabilities:SOUL_MESH_CAPABILITIES.map(c => c.id),
       executableCapabilities:n02CapabilityRuntime.listExecutable(),
       agents:n02AgentRegistry.list().map(agent => ({ id:agent.id, capabilities:agent.capabilities })),
