@@ -1,0 +1,27 @@
+name: N02 Runner Forensics
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  runner-forensics:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Capture runner evidence
+        run: node scripts/runner-forensics.mjs
+      - name: Upload runner evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: soul-n02-runner-forensics
+          path: SOUL-N02-RUNNER-FORENSICS.json
+          if-no-files-found: error
