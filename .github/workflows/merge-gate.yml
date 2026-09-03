@@ -8,6 +8,7 @@ on:
 
 permissions:
   contents: read
+  actions: read
 
 jobs:
   validate:
@@ -78,6 +79,10 @@ jobs:
           if (report.status !== 'PASS') process.exitCode = 1;
           NODE
 
+      - name: Capture GitHub job logs
+        if: failure()
+        run: node scripts/capture-ci-logs.mjs
+
       - name: Upload validation report
         if: always()
         uses: actions/upload-artifact@v4
@@ -85,6 +90,15 @@ jobs:
           name: n02-ci-validation
           path: .ci/validation-report.json
           if-no-files-found: error
+
+      - name: Upload captured job logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: soul-job-logs-${{ github.run_id }}
+          path: soul-job-logs-*.json
+          if-no-files-found: ignore
+          retention-days: 30
 
   pending-label:
     name: Mark CI pending until validation succeeds
