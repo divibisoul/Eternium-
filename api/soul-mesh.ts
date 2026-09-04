@@ -9,7 +9,10 @@ const NUCLEUS_ID: NucleusId = 'N02';
 const PEERS = SOUL_NUCLEI.filter(n => n !== NUCLEUS_ID);
 const MAX_BODY_BYTES = 2 * 1024 * 1024;
 const MAX_SEEN_NONCES = 10_000;
+const MAX_SEEN_MESSAGES = 10_000;
+const REPLAY_WINDOW_MS = 5 * 60_000;
 const seenNonces = new Set<string>();
+const seenMessageIds = new Map<string, number>();
 const registry = new SoulMeshCapabilityRegistry();
 
 for (const capability of registry.getAll()) {
@@ -27,19 +30,37 @@ function recordInboundFailure(source: string, capability: string, error: unknown
   meshResilience.failure(source || 'unknown', capability || '__invalid__', error, attempt, false);
 }
 
-function pruneNonces(): void {
-  while (seenNonces.size >= MAX_SEEN_NONCES) {
-    const oldest = seenNonces.values().next().value;
-    if (typeof oldest !== 'string') break;
-    seenNonces.delete(oldest);
+function pruneSet<T>(set: Set<T>, maxSize: number): void {
+  while (set.size >= maxSize) {
+    const oldest = set.values().next().value;
+    if (oldest === undefined) break;
+    set.delete(oldest);
   }
+}
+
+function pruneMessages(now = Date.now()): void {
+  for (const [id, at] of seenMessageIds) {
+    if (now - at > REPLAY_WINDOW_MS) seenMessageIds.delete(id);
+  }
+  while (seenMessageIds.size >= MAX_SEEN_MESSAGES) {
+    const oldest = seenMessageIds.keys().next().value;
+    if (typeof oldest !== 'string') break;
+    seenMessageIds.delete(oldest);
+  }
+}
+
+function acceptMessageId(messageId: string): boolean {
+  pruneMessages();
+  if (seenMessageIds.has(messageId)) return false;
+  seenMessageIds.set(messageId, Date.now());
+  return true;
 }
 
 function authorized(req: any, message: SecureMeshMessage): void {
   if (authDisabled()) return;
   const secret = hmacSecret();
   if (secret) {
-    pruneNonces();
+    pruneSet(seenNonces, MAX_SEEN_NONCES);
     verifyMeshMessage(message, secret, Date.now(), 30_000, seenNonces);
     return;
   }
@@ -110,6 +131,17 @@ export default async function handler(req: any, res: any) {
   }
 
   if (m.kind !== 'request') return send(res, 202, { accepted: true, correlationId: m.correlationId, source: NUCLEUS_ID, target: m.source });
+
+  if (!acceptMessageId(m.messageId ?? m.id)) {
+    const error = new Error('SOUL_MESH_DUPLICATE_MESSAGE');
+    recordInboundFailure(m.source, m.capability, error);
+    return send(res, 409, {
+      error: error.message,
+      correlationId: m.correlationId,
+      messageId: m.messageId ?? m.id,
+      idempotent: true,
+    });
+  }
 
   if (m.capability === 'mesh.ping') return send(res, 200, makeResponse(m.source, m.correlationId, 'mesh.ping', 'response', {
     ok: true, handler: 'N02.mesh.ping', echoed: m.payload ?? null, processedAt: Date.now(),
