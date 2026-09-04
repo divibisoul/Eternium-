@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "n02:typecheck": "tsc -p tsconfig.n02.json --noEmit"
   },
   "dependencies": {
     "@google/genai": "^1.10.0",
