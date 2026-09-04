@@ -21,8 +21,8 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm install --no-audit --no-fund
-      - name: Resilience regression suite
-        run: npm run test:resilience
+      - name: Resilience and security regression suite
+        run: npm run test:mesh
       - name: Typecheck complete Mesh/runtime surface
         run: npx tsc -p tsconfig.mesh.json --noEmit
       - name: Build web runtime
