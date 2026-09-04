@@ -39,9 +39,7 @@ function pruneSet<T>(set: Set<T>, maxSize: number): void {
 }
 
 function pruneMessages(now = Date.now()): void {
-  for (const [id, at] of seenMessageIds) {
-    if (now - at > REPLAY_WINDOW_MS) seenMessageIds.delete(id);
-  }
+  for (const [id, at] of seenMessageIds) if (now - at > REPLAY_WINDOW_MS) seenMessageIds.delete(id);
   while (seenMessageIds.size >= MAX_SEEN_MESSAGES) {
     const oldest = seenMessageIds.keys().next().value;
     if (typeof oldest !== 'string') break;
@@ -56,12 +54,12 @@ function acceptMessageId(messageId: string): boolean {
   return true;
 }
 
-function authorized(req: any, message: SecureMeshMessage): void {
+async function authorized(req: any, message: SecureMeshMessage): Promise<void> {
   if (authDisabled()) return;
   const secret = hmacSecret();
   if (secret) {
     pruneSet(seenNonces, MAX_SEEN_NONCES);
-    verifyMeshMessage(message, secret, Date.now(), 30_000, seenNonces);
+    await verifyMeshMessage(message, secret, Date.now(), 30_000, seenNonces);
     return;
   }
   const configuredToken = token();
@@ -69,7 +67,7 @@ function authorized(req: any, message: SecureMeshMessage): void {
   if (req.headers?.authorization !== `Bearer ${configuredToken}`) throw new Error('SOUL_MESH_UNAUTHORIZED');
 }
 
-function makeResponse(source: NucleusId, correlationId: string, capability: string, kind: 'response' | 'error', payload: unknown) {
+async function makeResponse(source: NucleusId, correlationId: string, capability: string, kind: 'response' | 'error', payload: unknown) {
   const base = {
     protocol: SOUL_MESH_PROTOCOL,
     id: crypto.randomUUID(),
@@ -86,7 +84,7 @@ function makeResponse(source: NucleusId, correlationId: string, capability: stri
   const secure = createSecureFields();
   const type = kind === 'response' ? (capability === 'mesh.ping' ? 'PING' : capability === 'mesh.health' ? 'HEALTH' : 'TASK_RESULT') : 'ERROR';
   const signed = { ...base, ...secure, type } as Omit<SecureMeshMessage, 'hmac'>;
-  return { ...base, ...secure, type, hmac: signMeshMessage(signed, secret) };
+  return { ...base, ...secure, type, hmac: await signMeshMessage(signed, secret) };
 }
 
 const send = (res: any, status: number, body: unknown) => {
@@ -122,7 +120,7 @@ export default async function handler(req: any, res: any) {
   }
 
   try {
-    authorized(req, m as SecureMeshMessage);
+    await authorized(req, m as SecureMeshMessage);
   } catch (error) {
     recordInboundFailure(m.source, m.capability, error);
     const code = error instanceof Error ? error.message : 'SOUL_MESH_UNAUTHORIZED';
@@ -135,19 +133,14 @@ export default async function handler(req: any, res: any) {
   if (!acceptMessageId(m.messageId ?? m.id)) {
     const error = new Error('SOUL_MESH_DUPLICATE_MESSAGE');
     recordInboundFailure(m.source, m.capability, error);
-    return send(res, 409, {
-      error: error.message,
-      correlationId: m.correlationId,
-      messageId: m.messageId ?? m.id,
-      idempotent: true,
-    });
+    return send(res, 409, { error: error.message, correlationId: m.correlationId, messageId: m.messageId ?? m.id, idempotent: true });
   }
 
-  if (m.capability === 'mesh.ping') return send(res, 200, makeResponse(m.source, m.correlationId, 'mesh.ping', 'response', {
+  if (m.capability === 'mesh.ping') return send(res, 200, await makeResponse(m.source, m.correlationId, 'mesh.ping', 'response', {
     ok: true, handler: 'N02.mesh.ping', echoed: m.payload ?? null, processedAt: Date.now(),
   }));
 
-  if (m.capability === 'mesh.describe') return send(res, 200, makeResponse(m.source, m.correlationId, 'mesh.describe', 'response', {
+  if (m.capability === 'mesh.describe') return send(res, 200, await makeResponse(m.source, m.correlationId, 'mesh.describe', 'response', {
     nucleus: NUCLEUS_ID,
     peers: PEERS,
     inChannels: PEERS.map(p => `N02.IN.${p}`),
@@ -157,7 +150,7 @@ export default async function handler(req: any, res: any) {
     protocol: SOUL_MESH_PROTOCOL,
   }));
 
-  if (m.capability === 'capability.list') return send(res, 200, makeResponse(m.source, m.correlationId, 'capability.list', 'response', {
+  if (m.capability === 'capability.list') return send(res, 200, await makeResponse(m.source, m.correlationId, 'capability.list', 'response', {
     nucleus: NUCLEUS_ID,
     capabilities: registry.getAll().map(c => ({ ...c, executable: registry.canExecute(c.id) })),
   }));
@@ -165,24 +158,20 @@ export default async function handler(req: any, res: any) {
   if (!registry.has(m.capability)) {
     const error = new Error('CAPABILITY_NOT_DECLARED');
     recordInboundFailure(m.source, m.capability, error);
-    return send(res, 501, makeResponse(m.source, m.correlationId, m.capability, 'error', {
-      code: error.message, nucleus: NUCLEUS_ID, capability: m.capability,
-    }));
+    return send(res, 501, await makeResponse(m.source, m.correlationId, m.capability, 'error', { code: error.message, nucleus: NUCLEUS_ID, capability: m.capability }));
   }
   if (!registry.canExecute(m.capability)) {
     const error = new Error('CAPABILITY_HANDLER_NOT_REGISTERED');
     recordInboundFailure(m.source, m.capability, error);
-    return send(res, 501, makeResponse(m.source, m.correlationId, m.capability, 'error', {
-      code: error.message, nucleus: NUCLEUS_ID, capability: m.capability,
-    }));
+    return send(res, 501, await makeResponse(m.source, m.correlationId, m.capability, 'error', { code: error.message, nucleus: NUCLEUS_ID, capability: m.capability }));
   }
 
   try {
     const payload = await registry.execute(m.capability, m.payload);
-    return send(res, 200, makeResponse(m.source, m.correlationId, m.capability, 'response', payload));
+    return send(res, 200, await makeResponse(m.source, m.correlationId, m.capability, 'response', payload));
   } catch (error) {
     recordInboundFailure(m.source, m.capability, error);
-    return send(res, 500, makeResponse(m.source, m.correlationId, m.capability, 'error', {
+    return send(res, 500, await makeResponse(m.source, m.correlationId, m.capability, 'error', {
       code: 'CAPABILITY_EXECUTION_ERROR', nucleus: NUCLEUS_ID, capability: m.capability,
       message: error instanceof Error ? error.message : String(error),
     }));
