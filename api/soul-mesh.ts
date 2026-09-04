@@ -1,6 +1,6 @@
 import { SoulMeshCapabilityRegistry } from '../src/soul-mesh/SoulMeshCapabilityRegistry';
 import { executeN02Capability } from '../services/soulMeshRuntime';
-import { assertSoulMeshWireMessage, SOUL_NUCLEI, SOUL_MESH_PROTOCOL, type SoulNucleusId } from '../src/soul-mesh/SoulMeshWireContract';
+import { normalizeSoulMeshWireMessage, SOUL_NUCLEI, SOUL_MESH_PROTOCOL, type SoulNucleusId } from '../src/soul-mesh/SoulMeshWireContract';
 import { createSecureFields, signMeshMessage, verifyMeshMessage, type SecureMeshMessage } from '../src/soul-mesh/SoulMeshSecurity';
 
 type NucleusId = SoulNucleusId;
@@ -20,29 +20,25 @@ for (const capability of registry.getAll()) {
 const hmacSecret = () => String((globalThis as any).process?.env?.SOUL_MESH_HMAC_SECRET ?? '').trim();
 const authDisabled = () => String((globalThis as any).process?.env?.MESH_AUTH_DISABLED ?? 'false').toLowerCase() === 'true';
 const token = () => String((globalThis as any).process?.env?.SOUL_MESH_TOKEN ?? '').trim();
-const production = () => String((globalThis as any).process?.env?.NODE_ENV ?? '').toLowerCase() === 'production';
 
-function rememberNonce(nonce: string): void {
-  if (seenNonces.size >= MAX_SEEN_NONCES) {
-    const iterator = seenNonces.values();
-    const oldest = iterator.next().value;
-    if (typeof oldest === 'string') seenNonces.delete(oldest);
+function pruneNonces(): void {
+  while (seenNonces.size >= MAX_SEEN_NONCES) {
+    const oldest = seenNonces.values().next().value;
+    if (typeof oldest !== 'string') break;
+    seenNonces.delete(oldest);
   }
-  seenNonces.add(nonce);
 }
 
 function authorized(req: any, message: SecureMeshMessage): void {
   if (authDisabled()) return;
   const secret = hmacSecret();
   if (secret) {
+    pruneNonces();
     verifyMeshMessage(message, secret, Date.now(), 30_000, seenNonces);
     return;
   }
   const configuredToken = token();
-  if (!configuredToken) {
-    if (production()) throw new Error('SOUL_MESH_AUTH_NOT_CONFIGURED');
-    return;
-  }
+  if (!configuredToken) throw new Error('SOUL_MESH_AUTH_NOT_CONFIGURED');
   if (req.headers?.authorization !== `Bearer ${configuredToken}`) throw new Error('SOUL_MESH_UNAUTHORIZED');
 }
 
@@ -61,8 +57,9 @@ function makeResponse(source: NucleusId, correlationId: string, capability: stri
   const secret = hmacSecret();
   if (!secret || authDisabled()) return base;
   const secure = createSecureFields();
-  const signed = { ...base, ...secure, type: kind === 'response' ? 'TASK_RESULT' : 'ERROR' } as Omit<SecureMeshMessage, 'hmac'>;
-  return { ...base, ...secure, type: kind === 'response' ? 'TASK_RESULT' : 'ERROR', hmac: signMeshMessage(signed, secret) };
+  const type = kind === 'response' ? (capability === 'mesh.ping' ? 'PING' : capability === 'mesh.health' ? 'HEALTH' : 'TASK_RESULT') : 'ERROR';
+  const signed = { ...base, ...secure, type } as Omit<SecureMeshMessage, 'hmac'>;
+  return { ...base, ...secure, type, hmac: signMeshMessage(signed, secret) };
 }
 
 const send = (res: any, status: number, body: unknown) => {
@@ -79,11 +76,10 @@ export default async function handler(req: any, res: any) {
   const rawLength = Number(req.headers?.['content-length'] ?? 0);
   if (Number.isFinite(rawLength) && rawLength > MAX_BODY_BYTES) return send(res, 413, { error: 'PAYLOAD_TOO_LARGE' });
 
-  let m = req.body;
-  if (typeof m === 'string') {
-    try { m = JSON.parse(m); } catch { return send(res, 400, { error: 'INVALID_JSON' }); }
-  }
-  try { assertSoulMeshWireMessage(m); } catch (error) {
+  let m;
+  try {
+    m = normalizeSoulMeshWireMessage(req.body);
+  } catch (error) {
     return send(res, 400, { error: error instanceof Error ? error.message : 'INVALID_SOUL_MESH_MESSAGE' });
   }
 
