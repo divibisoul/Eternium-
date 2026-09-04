@@ -1,0 +1,30 @@
+name: N02 Forensic Resilience
+
+on:
+  push:
+    branches: [forensic/n02-resilience-generative-v2]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Typecheck
+        run: npm run lint
+      - name: Build
+        run: npm run build
+      - name: N02 chaos and breaker check
+        run: node --experimental-strip-types scripts/n02-chaos-check.ts
