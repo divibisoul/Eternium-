@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "test:resilience": "node --experimental-strip-types scripts/test-mesh-resilience.ts",
     "test:security": "node --experimental-strip-types scripts/test-mesh-security.ts",
-    "test:mesh": "npm run test:resilience && npm run test:security"
+    "test:compat": "node --experimental-strip-types scripts/test-n01-n02-compat.ts",
+    "test:mesh": "npm run test:resilience && npm run test:security && npm run test:compat"
   },
   "dependencies": {
     "react-dom": "^19.1.0",
