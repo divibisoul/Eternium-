@@ -1,6 +1,6 @@
 import { GoogleGenAI, Content, GenerateContentResponse } from "@google/genai";
 import { SystemAspect, DeployedCapability } from "../types.ts";
-import { geminiRetryOptions, shouldFallbackGemini, withGeminiRetry } from "./geminiReliability.ts";
+import { geminiRetryOptions, shouldFallbackGemini, withGeminiRetry, recordGeminiFallback } from "./geminiReliability.ts";
 
 const getAiClient = () => {
   if (!process.env.API_KEY) {
@@ -63,71 +63,43 @@ function buildConfig(useWebSearch: boolean, systemInstruction: string): Record<s
   return config;
 }
 
-async function generateWithModel(
-  ai: GoogleGenAI,
-  model: string,
-  contents: Content[],
-  config: Record<string, unknown>,
-): Promise<GenerateContentResponse> {
-  return withGeminiRetry(
-    () => ai.models.generateContent({ model, contents, config }),
-    geminiRetryOptions(),
-  );
+async function generateWithModel(ai: GoogleGenAI, model: string, contents: Content[], config: Record<string, unknown>): Promise<GenerateContentResponse> {
+  return withGeminiRetry(() => ai.models.generateContent({ model, contents, config }), geminiRetryOptions());
 }
 
-async function generateWithFallback(
-  ai: GoogleGenAI,
-  primaryModel: string,
-  fallbackModel: string,
-  contents: Content[],
-  config: Record<string, unknown>,
-): Promise<GenerateContentResponse> {
+async function generateWithFallback(ai: GoogleGenAI, primaryModel: string, fallbackModel: string, contents: Content[], config: Record<string, unknown>): Promise<GenerateContentResponse> {
   try {
     return await generateWithModel(ai, primaryModel, contents, config);
   } catch (primaryError) {
     if (primaryModel === fallbackModel || !shouldFallbackGemini(primaryError)) throw primaryError;
+    recordGeminiFallback();
     console.warn(`[Gemini] modelo primário indisponível; acionando fallback ${fallbackModel}.`);
     return generateWithModel(ai, fallbackModel, contents, config);
   }
 }
 
-export const processUserDirective = async (
-  mode: SystemAspect,
-  contents: Content[],
-  useWebSearch: boolean,
-  deployedCapabilities: DeployedCapability[],
-  isFullCognitionMode: boolean,
-): Promise<GenerateContentResponse> => {
+export const processUserDirective = async (mode: SystemAspect, contents: Content[], useWebSearch: boolean, deployedCapabilities: DeployedCapability[], isFullCognitionMode: boolean): Promise<GenerateContentResponse> => {
   const ai = getAiClient();
-
   let systemInstruction: string;
   if (isFullCognitionMode) {
     systemInstruction = `**COGNITIVE OVERRIDE ACTIVE**\nAUTHORIZATION: OmniOmega\nLEVEL: 9\nPROTOCOL: Theta\nProcess the user's directive with maximum cognitive capacity. Respond directly, without JSON encapsulation.`;
   } else {
-    const activePersonas = deployedCapabilities
-      .map(cap => functionalCorePrompts[cap.id])
-      .filter(Boolean);
+    const activePersonas = deployedCapabilities.map(cap => functionalCorePrompts[cap.id]).filter(Boolean);
     const personaInstruction = activePersonas.length > 0
       ? `${baseSystemInstruction}\n\n--- INÍCIO DAS PERSONAS ATIVAS ---\n${activePersonas.join('\n\n')}\n--- FIM DAS PERSONAS ATIVAS ---`
       : "Você é um assistente de IA geral e prestativo chamado Aeternum. Responda de forma clara e direta às perguntas do usuário.";
     systemInstruction = `${enforcementPreamble}\n\n${personaInstruction}`;
   }
-
   const config = buildConfig(useWebSearch, systemInstruction);
   const primaryModel = normalizeProviderModel(process.env.GEMINI_MODEL, 'gemini-2.5-flash');
   const fallbackModel = normalizeProviderModel(process.env.GEMINI_FALLBACK_MODEL, 'gemini-2.5-flash-lite');
-
   try {
     return await generateWithFallback(ai, primaryModel, fallbackModel, contents, config);
   } catch (error) {
     console.error("Erro na comunicação com a API Gemini:", error);
     if (error instanceof Error) {
-      if (error.message.includes('API_KEY') || error.message.includes('permission')) {
-        throw new Error('[ERRO DE AUTENTICAÇÃO] A chave da API do núcleo é inválida, expirou ou carece de permissões.');
-      }
-      if (error.message.includes('400')) {
-        throw new Error('[ERRO DE CONTEÚDO] A solicitação para o núcleo foi malformada.');
-      }
+      if (error.message.includes('API_KEY') || error.message.includes('permission')) throw new Error('[ERRO DE AUTENTICAÇÃO] A chave da API do núcleo é inválida, expirou ou carece de permissões.');
+      if (error.message.includes('400')) throw new Error('[ERRO DE CONTEÚDO] A solicitação para o núcleo foi malformada.');
     }
     throw new Error('[ERRO DE CONEXÃO] Falha persistente na comunicação com os modelos Gemini após retry/fallback.');
   }
@@ -135,13 +107,9 @@ export const processUserDirective = async (
 
 export const transcribeAudio = async (audioBase64: string, mimeType: string): Promise<string> => {
   const ai = getAiClient();
-  const contents = [{ parts: [
-    { inlineData: { mimeType, data: audioBase64 } },
-    { text: "Transcreva o seguinte áudio para o português do Brasil. Responda apenas com o texto transcrito." },
-  ] }] as unknown as Content[];
+  const contents = [{ parts: [{ inlineData: { mimeType, data: audioBase64 } }, { text: "Transcreva o seguinte áudio para o português do Brasil. Responda apenas com o texto transcrito." }] }] as unknown as Content[];
   const primaryModel = normalizeProviderModel(process.env.GEMINI_MODEL, 'gemini-2.5-flash');
   const fallbackModel = normalizeProviderModel(process.env.GEMINI_FALLBACK_MODEL, 'gemini-2.5-flash-lite');
-
   try {
     const response = await generateWithFallback(ai, primaryModel, fallbackModel, contents, {});
     const text = response.text?.trim();
