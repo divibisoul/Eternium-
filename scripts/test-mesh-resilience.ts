@@ -33,11 +33,14 @@ await assert.rejects(
   }),
   /RESILIENCE_EXHAUSTED/,
 );
+const first = resilience.snapshot().peers.N03;
 assert.equal(attempts, 2, 'idempotent ping must retry once');
-assert.equal(resilience.snapshot().peers.N03.metrics.retries, 1);
-assert.equal(resilience.snapshot().peers.N03.state, 'open');
-assert.match(resilience.snapshot().peers.N03.forensic[0].stack ?? '', /Error/);
+assert.equal(first.metrics.requests, 1, 'logical request counter must not count retries');
+assert.equal(first.metrics.retries, 1, 'retry counter must count only retry attempts');
+assert.equal(first.state, 'open');
+assert.match(first.forensic[0].stack ?? '', /Error/);
 
+const beforeMutation = attempts;
 await assert.rejects(
   resilience.execute('N03', 'task.execute', async () => {
     attempts += 1;
@@ -45,17 +48,20 @@ await assert.rejects(
   }),
   /CIRCUIT_OPEN|RESILIENCE_EXHAUSTED/,
 );
-assert.equal(attempts, 2, 'non-idempotent operation must not be retried');
+assert.equal(attempts, beforeMutation, 'open circuit must reject without invoking mutation');
 
 await new Promise(resolve => setTimeout(resolve, 12));
 const recovered = await resilience.execute('N03', 'mesh.ping', async () => ({ ok: true }));
 assert.deepEqual(recovered, { ok: true });
-assert.equal(resilience.snapshot().peers.N03.state, 'closed');
-assert.equal(resilience.snapshot().peers.N03.metrics.consecutiveFailures, 0);
+const final = resilience.snapshot().peers.N03;
+assert.equal(final.state, 'closed');
+assert.equal(final.metrics.consecutiveFailures, 0);
+assert.equal(final.metrics.requests, 2);
 
 const prometheus = resilience.prometheus();
-assert.match(prometheus, /n02_mesh_requests_total\{target="N03"\}/);
-assert.match(prometheus, /n02_mesh_failures_total\{target="N03"\}/);
-assert.match(prometheus, /n02_mesh_circuit_state\{target="N03"\}/);
+assert.match(prometheus, /n02_mesh_requests_total\{target="N03"\} 2/);
+assert.match(prometheus, /n02_mesh_retries_total\{target="N03"\} 1/);
+assert.match(prometheus, /n02_mesh_failures_by_kind_total\{target="N03",kind="network"\} 2/);
+assert.match(prometheus, /n02_mesh_circuit_state\{target="N03"\} 0/);
 
 console.log('N02 Mesh resilience: PASS');
