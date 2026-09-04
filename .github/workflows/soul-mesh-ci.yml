@@ -1,18 +1,28 @@
 name: Soul Mesh CI
+
 on:
   push:
     branches: [ main, 'upgrade/**' ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
+
+permissions:
+  contents: read
+
 jobs:
   verify:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-      - run: npm install
+      - run: npm install --no-audit --no-fund
+      - name: Resilience regression suite
+        run: npm run test:resilience
       - name: Typecheck complete Mesh/runtime surface
         run: npx tsc -p tsconfig.mesh.json --noEmit
       - name: Build web runtime
