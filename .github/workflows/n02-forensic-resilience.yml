@@ -19,11 +19,25 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Install
-        run: npm install --no-audit --no-fund
-      - name: Typecheck
-        run: npm run lint
-      - name: Build
-        run: npm run build
-      - name: N02 chaos and breaker check
-        run: node --experimental-strip-types scripts/n02-chaos-check.ts
+      - name: Diagnostics, build and chaos
+        shell: bash
+        run: |
+          set +e
+          {
+            echo '=== node ==='; node --version; npm --version
+            echo '=== npm install ==='; npm install --no-audit --no-fund; echo "install_exit=$?"
+            echo '=== root typecheck ==='; npm run lint; echo "lint_exit=$?"
+            echo '=== N02 strict typecheck ==='; npm run n02:typecheck; echo "n02_typecheck_exit=$?"
+            echo '=== build ==='; npm run build; echo "build_exit=$?"
+            echo '=== chaos ==='; node --experimental-strip-types scripts/n02-chaos-check.ts; echo "chaos_exit=$?"
+          } 2>&1 | tee n02-forensic-ci.log
+          status=${PIPESTATUS[0]}
+          echo "pipeline_exit=$status"
+          exit "$status"
+      - name: Upload forensic diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: n02-forensic-ci-${{ github.run_id }}
+          path: n02-forensic-ci.log
+          if-no-files-found: warn
