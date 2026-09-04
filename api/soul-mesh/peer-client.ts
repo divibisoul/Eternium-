@@ -62,7 +62,7 @@ function securePayload(capability: string, payload: unknown, type: NonNullable<M
   return { capabilityId: capability, data: payload };
 }
 
-function secureMessage(message: MeshMessage): MeshMessage {
+async function secureMessage(message: MeshMessage): Promise<MeshMessage> {
   const secret = hmacSecret();
   if (!secret) return message;
   const secure = createSecureFields();
@@ -81,7 +81,7 @@ function secureMessage(message: MeshMessage): MeshMessage {
     payload,
     timestamp: message.timestamp,
   } as Omit<SecureMeshMessage, 'hmac'>;
-  return { ...message, ...secure, type, payload, hmac: signMeshMessage(unsigned, secret) };
+  return { ...message, ...secure, type, payload, hmac: await signMeshMessage(unsigned, secret) };
 }
 
 async function sendToAttempt(target: NucleusId, capability: string, payload: unknown, timeoutMs: number): Promise<MeshMessage> {
@@ -91,7 +91,7 @@ async function sendToAttempt(target: NucleusId, capability: string, payload: unk
   if (!url) throw new Error(`SOUL_MESH_PEER_URL_NOT_CONFIGURED:${target}`);
 
   const correlationId = uuid();
-  const message = secureMessage({
+  const message = await secureMessage({
     protocol: 'soul-mesh/1', id: uuid(), correlationId, source: 'N02', target,
     kind: 'request', capability: capability.trim(), payload, timestamp: Date.now(),
   });
@@ -114,7 +114,7 @@ async function sendToAttempt(target: NucleusId, capability: string, payload: unk
     if (body.correlationId !== correlationId) throw new Error('SOUL_MESH_CORRELATION_MISMATCH');
     if (body.source !== target || body.target !== 'N02') throw new Error('SOUL_MESH_IDENTITY_MISMATCH');
     const secret = hmacSecret();
-    if (secret) verifyMeshMessage(body as SecureMeshMessage, secret, Date.now(), 30000, seenNonces);
+    if (secret) await verifyMeshMessage(body as SecureMeshMessage, secret, Date.now(), 30000, seenNonces);
     if (!response.ok || body.kind === 'error') {
       const code = body.payload && typeof body.payload === 'object' && 'code' in body.payload
         ? String((body.payload as { code?: unknown }).code) : String(response.status);
