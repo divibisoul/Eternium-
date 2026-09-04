@@ -18,7 +18,8 @@ for (const capability of registry.getAll()) {
 }
 
 const hmacSecret = () => String((globalThis as any).process?.env?.SOUL_MESH_HMAC_SECRET ?? '').trim();
-const authDisabled = () => String((globalThis as any).process?.env?.MESH_AUTH_DISABLED ?? 'false').toLowerCase() === 'true';
+const production = () => String((globalThis as any).process?.env?.NODE_ENV ?? '').toLowerCase() === 'production';
+const authDisabled = () => !production() && String((globalThis as any).process?.env?.MESH_AUTH_DISABLED ?? 'false').toLowerCase() === 'true';
 const token = () => String((globalThis as any).process?.env?.SOUL_MESH_TOKEN ?? '').trim();
 
 function pruneNonces(): void {
