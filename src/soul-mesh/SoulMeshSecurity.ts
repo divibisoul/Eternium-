@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
 
 export const SOUL_MESH_VERSION = '1.0' as const;
 export const SOUL_MESH_CONTRACT_VERSION = '1.1.0' as const;
@@ -6,33 +6,43 @@ export const MAX_CLOCK_SKEW_MS = 30000;
 
 export interface SecureMeshMessage {
   protocol: 'soul-mesh/1';
+  version: typeof SOUL_MESH_VERSION;
   contractVersion: typeof SOUL_MESH_CONTRACT_VERSION;
   id: string;
+  messageId?: string;
   correlationId: string;
   source: string;
   target: string;
   kind: 'request' | 'response' | 'event' | 'error';
+  type?: 'PING' | 'HEALTH' | 'CAPABILITY_REQUEST' | 'TASK' | 'TASK_RESULT' | 'ERROR';
   capability: string;
   payload: unknown;
   timestamp: number;
-  version: typeof SOUL_MESH_VERSION;
   nonce: string;
   hmac: string;
+  ttl?: number;
+}
+
+function signedPayload(message: Pick<SecureMeshMessage, 'capability' | 'payload'>): unknown {
+  if (message.payload && typeof message.payload === 'object' && !Array.isArray(message.payload)) {
+    return { capability: message.capability, ...(message.payload as Record<string, unknown>) };
+  }
+  return { capability: message.capability, payload: message.payload };
 }
 
 function canonical(message: Omit<SecureMeshMessage, 'hmac'>): string {
   return JSON.stringify({
     version: message.version,
     contractVersion: message.contractVersion,
-    messageId: message.id,
+    messageId: message.messageId ?? message.id,
     source: message.source,
     target: message.target,
     timestamp: message.timestamp,
     nonce: message.nonce,
     correlationId: message.correlationId,
-    type: message.kind,
-    payload: message.payload,
-    capability: message.capability,
+    type: message.type ?? (message.kind === 'request' ? 'CAPABILITY_REQUEST' : message.kind === 'response' ? 'TASK_RESULT' : 'ERROR'),
+    ...(message.ttl === undefined ? {} : { ttl: message.ttl }),
+    payload: signedPayload(message),
   });
 }
 
@@ -44,6 +54,11 @@ function secretBytes(secret: string): Buffer {
 
 export function signMeshMessage(message: Omit<SecureMeshMessage, 'hmac'>, secret: string): string {
   return createHmac('sha256', secretBytes(secret)).update(canonical(message), 'utf8').digest('hex');
+}
+
+export function createSecureFields(): Pick<SecureMeshMessage, 'version' | 'contractVersion' | 'nonce' | 'messageId'> {
+  const messageId = randomUUID();
+  return { version: SOUL_MESH_VERSION, contractVersion: SOUL_MESH_CONTRACT_VERSION, nonce: randomUUID(), messageId };
 }
 
 export function verifyMeshMessage(
@@ -68,12 +83,4 @@ export function verifyMeshMessage(
     throw new Error('SOUL_MESH_HMAC_INVALID');
   }
   seenNonces?.add(message.nonce);
-}
-
-export function createSecureFields(): { version: typeof SOUL_MESH_VERSION; contractVersion: typeof SOUL_MESH_CONTRACT_VERSION; nonce: string } {
-  return {
-    version: SOUL_MESH_VERSION,
-    contractVersion: SOUL_MESH_CONTRACT_VERSION,
-    nonce: crypto.randomUUID(),
-  };
 }
