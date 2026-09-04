@@ -1,16 +1,24 @@
 import { meshResilience, isIdempotentCapability } from './resilience';
+import { createSecureFields, signMeshMessage, verifyMeshMessage } from '../../src/soul-mesh/SoulMeshSecurity';
 
 export type NucleusId = 'N01' | 'N02' | 'N03' | 'N04' | 'N05' | 'N06';
 export type MeshMessage = {
   protocol: 'soul-mesh/1';
+  version?: '1.0';
+  contractVersion?: '1.1.0';
   id: string;
+  messageId?: string;
   correlationId: string;
   source: NucleusId;
   target: NucleusId;
   kind: 'request' | 'response' | 'event' | 'error';
+  type?: 'PING' | 'HEALTH' | 'CAPABILITY_REQUEST' | 'TASK' | 'TASK_RESULT' | 'ERROR';
   capability: string;
   payload: unknown;
   timestamp: number;
+  nonce?: string;
+  hmac?: string;
+  ttl?: number;
 };
 
 const PEERS: Exclude<NucleusId, 'N02'>[] = ['N01', 'N03', 'N04', 'N05', 'N06'];
@@ -23,6 +31,8 @@ const tokens: Partial<Record<NucleusId, string>> = {
   N01: env.SOUL_MESH_TOKEN_N01, N03: env.SOUL_MESH_TOKEN_N03, N04: env.SOUL_MESH_TOKEN_N04,
   N05: env.SOUL_MESH_TOKEN_N05, N06: env.SOUL_MESH_TOKEN_N06,
 };
+const hmacSecret = () => String(env.SOUL_MESH_HMAC_SECRET ?? '').trim();
+const seenNonces = new Set<string>();
 
 const uuid = () => {
   const value = globalThis.crypto?.randomUUID?.();
@@ -32,6 +42,18 @@ const uuid = () => {
 
 const boundedTimeout = (timeoutMs: number) => Math.min(Math.max(timeoutMs, 500), 30000);
 
+function secureMessage(message: MeshMessage): MeshMessage {
+  const secret = hmacSecret();
+  if (!secret) return message;
+  const secure = createSecureFields();
+  const unsigned = {
+    ...message,
+    ...secure,
+    messageId: secure.messageId,
+  } as Omit<import('../../src/soul-mesh/SoulMeshSecurity').SecureMeshMessage, 'hmac'>;
+  return { ...message, ...secure, messageId: secure.messageId, hmac: signMeshMessage(unsigned, secret) };
+}
+
 async function sendToAttempt(target: NucleusId, capability: string, payload: unknown, timeoutMs: number): Promise<MeshMessage> {
   if (target === 'N02') throw new Error('SOUL_MESH_SELF_TARGET_NOT_ALLOWED');
   if (!capability?.trim()) throw new Error('SOUL_MESH_CAPABILITY_REQUIRED');
@@ -39,10 +61,10 @@ async function sendToAttempt(target: NucleusId, capability: string, payload: unk
   if (!url) throw new Error(`SOUL_MESH_PEER_URL_NOT_CONFIGURED:${target}`);
 
   const correlationId = uuid();
-  const message: MeshMessage = {
+  const message = secureMessage({
     protocol: 'soul-mesh/1', id: uuid(), correlationId, source: 'N02', target,
-    kind: 'request', capability: capability.trim(), payload, timestamp: Date.now(),
-  };
+    kind: 'request', type: 'CAPABILITY_REQUEST', capability: capability.trim(), payload, timestamp: Date.now(),
+  });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), boundedTimeout(timeoutMs));
   try {
@@ -59,6 +81,10 @@ async function sendToAttempt(target: NucleusId, capability: string, payload: unk
     catch { throw new Error(`SOUL_MESH_INVALID_REMOTE_JSON:${target}:${response.status}`); }
     if (body.correlationId !== correlationId) throw new Error('SOUL_MESH_CORRELATION_MISMATCH');
     if (body.source !== target || body.target !== 'N02') throw new Error('SOUL_MESH_IDENTITY_MISMATCH');
+    const secret = hmacSecret();
+    if (secret) {
+      verifyMeshMessage(body as import('../../src/soul-mesh/SoulMeshSecurity').SecureMeshMessage, secret, Date.now(), 30000, seenNonces);
+    }
     if (!response.ok || body.kind === 'error') {
       const code = body.payload && typeof body.payload === 'object' && 'code' in body.payload
         ? String((body.payload as { code?: unknown }).code) : String(response.status);
