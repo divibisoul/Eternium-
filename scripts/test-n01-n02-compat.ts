@@ -30,10 +30,7 @@ const envelope = {
 
 const signed = {
   ...envelope,
-  hmac: signMeshMessage({
-    ...envelope,
-    id: messageId,
-  }, secret),
+  hmac: await signMeshMessage({ ...envelope, id: messageId }, secret),
 };
 
 const normalized = normalizeSoulMeshWireMessage(signed);
@@ -43,26 +40,20 @@ assert.equal(normalized.kind, 'request');
 assert.equal(normalized.capability, 'reasoning');
 assert.equal(normalized.type, 'TASK');
 assert.deepEqual(normalized.payload, envelope.payload);
-verifyMeshMessage(signed as never, secret, now);
+await verifyMeshMessage(signed as never, secret, now);
 
-const ping = normalizeSoulMeshWireMessage({
+const pingUnsigned = {
   ...envelope,
   messageId: 'n01-ping-1',
+  id: 'n01-ping-1',
   correlationId: 'ping-compat',
-  type: 'PING',
+  type: 'PING' as const,
   payload: { probe: 'N01' },
   nonce: 'fedcba9876543210',
-  hmac: signMeshMessage({
-    ...envelope,
-    id: 'n01-ping-1',
-    messageId: 'n01-ping-1',
-    correlationId: 'ping-compat',
-    type: 'PING',
-    payload: { probe: 'N01' },
-    nonce: 'fedcba9876543210',
-  }, secret),
-});
+};
+const ping = normalizeSoulMeshWireMessage({ ...pingUnsigned, hmac: await signMeshMessage(pingUnsigned, secret) });
 assert.equal(ping.capability, 'mesh.ping');
 assert.equal(ping.kind, 'request');
+await verifyMeshMessage({ ...pingUnsigned, hmac: await signMeshMessage(pingUnsigned, secret) } as never, secret, now);
 
 console.log('N01↔N02 envelope compatibility: PASS');
