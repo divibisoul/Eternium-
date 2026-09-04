@@ -23,17 +23,18 @@ jobs:
         shell: bash
         run: |
           set +e
+          status=0
           {
             echo '=== node ==='; node --version; npm --version
-            echo '=== npm install ==='; npm install --no-audit --no-fund; echo "install_exit=$?"
-            echo '=== root typecheck ==='; npm run lint; echo "lint_exit=$?"
-            echo '=== N02 strict typecheck ==='; npm run n02:typecheck; echo "n02_typecheck_exit=$?"
-            echo '=== build ==='; npm run build; echo "build_exit=$?"
-            echo '=== chaos ==='; node --experimental-strip-types scripts/n02-chaos-check.ts; echo "chaos_exit=$?"
+            echo '=== npm install ==='; npm install --no-audit --no-fund; rc=$?; echo "install_exit=$rc"; ((rc != 0)) && status=1
+            echo '=== root typecheck ==='; npm run lint; rc=$?; echo "lint_exit=$rc"; ((rc != 0)) && status=1
+            echo '=== N02 strict typecheck ==='; npm run n02:typecheck; rc=$?; echo "n02_typecheck_exit=$rc"; ((rc != 0)) && status=1
+            echo '=== build ==='; npm run build; rc=$?; echo "build_exit=$rc"; ((rc != 0)) && status=1
+            echo '=== selftest ==='; node --experimental-strip-types scripts/n02-resilience-selftest.ts; rc=$?; echo "selftest_exit=$rc"; ((rc != 0)) && status=1
+            echo '=== chaos ==='; node --experimental-strip-types scripts/n02-chaos-check.ts; rc=$?; echo "chaos_exit=$rc"; ((rc != 0)) && status=1
+            echo "pipeline_exit=$status"
           } 2>&1 | tee n02-forensic-ci.log
-          status=${PIPESTATUS[0]}
-          echo "pipeline_exit=$status"
-          exit "$status"
+          exit "${PIPESTATUS[0]}"
       - name: Upload forensic diagnostics
         if: always()
         uses: actions/upload-artifact@v4
