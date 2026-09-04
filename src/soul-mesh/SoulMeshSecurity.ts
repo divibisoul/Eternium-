@@ -25,11 +25,15 @@ export interface SecureMeshMessage {
 
 function canonical(message: Omit<SecureMeshMessage, 'hmac'>): string {
   return JSON.stringify({
+    protocol: message.protocol,
     version: message.version,
     contractVersion: message.contractVersion,
     messageId: message.messageId ?? message.id,
+    id: message.id,
     source: message.source,
     target: message.target,
+    kind: message.kind,
+    capability: message.capability,
     timestamp: message.timestamp,
     nonce: message.nonce,
     correlationId: message.correlationId,
@@ -70,7 +74,8 @@ export function verifyMeshMessage(
   }
   if (!/^[0-9a-f]{64}$/i.test(message.hmac)) throw new Error('SOUL_MESH_HMAC_FORMAT_INVALID');
   if (seenNonces?.has(message.nonce)) throw new Error('SOUL_MESH_REPLAY_DETECTED');
-  const expected = Buffer.from(signMeshMessage({ ...message, hmac: undefined as never }, secret), 'hex');
+  const unsigned = { ...message } as Omit<SecureMeshMessage, 'hmac'>;
+  const expected = Buffer.from(signMeshMessage(unsigned, secret), 'hex');
   const supplied = Buffer.from(message.hmac, 'hex');
   if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
     throw new Error('SOUL_MESH_HMAC_INVALID');

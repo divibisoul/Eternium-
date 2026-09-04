@@ -41,6 +41,10 @@ export interface MeshPeerMetrics {
   circuitOpens: number;
   fallbacks: number;
   consecutiveFailures: number;
+  totalLatencyMs: number;
+  lastLatencyMs?: number;
+  recoveryCount: number;
+  totalRecoveryMs: number;
   failuresByKind: Partial<Record<MeshFailureKind, number>>;
   lastFailureAt?: number;
   lastFailureKind?: MeshFailureKind;
@@ -136,7 +140,31 @@ export function backoffDelayMs(attempt: number, cfg?: MeshResilienceConfig): num
   return Math.min(resolved.maxBackoffMs, resolved.baseBackoffMs * (2 ** exponent));
 }
 
+function secureRandomUnit(): number {
+  const cryptoObject = globalThis.crypto;
+  if (cryptoObject?.getRandomValues) {
+    const values = new Uint32Array(1);
+    cryptoObject.getRandomValues(values);
+    return values[0] / 0x1_0000_0000;
+  }
+  return 0.5;
+}
+
+export function jitteredBackoffDelayMs(attempt: number, cfg?: MeshResilienceConfig, randomUnit = secureRandomUnit()): number {
+  const base = backoffDelayMs(attempt, cfg);
+  const safeRandom = Math.min(1, Math.max(0, Number(randomUnit)));
+  return base + Math.floor(base * 0.2 * safeRandom);
+}
+
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+function safeForensicText(value: unknown): string {
+  const text = value instanceof Error ? value.message : String(value);
+  return text
+    .replace(/Bearer\s+[A-Za-z0-9._-]+/gi, 'Bearer <redacted>')
+    .replace(/https?:\/\/\S+/gi, '<url-redacted>')
+    .slice(0, 1000);
+}
 
 export class MeshResilienceController {
   private readonly cfg: Required<MeshResilienceConfig>;
@@ -153,7 +181,7 @@ export class MeshResilienceController {
         state: 'closed', openedAt: 0, halfOpenProbe: false,
         metrics: {
           requests: 0, successes: 0, failures: 0, retries: 0, circuitOpens: 0, fallbacks: 0,
-          consecutiveFailures: 0, failuresByKind: {},
+          consecutiveFailures: 0, totalLatencyMs: 0, recoveryCount: 0, totalRecoveryMs: 0, failuresByKind: {},
         },
         forensic: [],
       };
@@ -179,9 +207,16 @@ export class MeshResilienceController {
     if (peer.state === 'half-open') peer.halfOpenProbe = true;
   }
 
-  success(target: string): void {
+  success(target: string, latencyMs = 0): void {
     const peer = this.state(target);
+    const wasHalfOpen = peer.state === 'half-open';
     peer.metrics.successes += 1;
+    peer.metrics.totalLatencyMs += Math.max(0, latencyMs);
+    peer.metrics.lastLatencyMs = Math.max(0, latencyMs);
+    if (wasHalfOpen && peer.openedAt > 0) {
+      peer.metrics.recoveryCount += 1;
+      peer.metrics.totalRecoveryMs += Math.max(0, Date.now() - peer.openedAt);
+    }
     peer.metrics.consecutiveFailures = 0;
     peer.state = 'closed';
     peer.openedAt = 0;
@@ -196,7 +231,7 @@ export class MeshResilienceController {
     peer.metrics.failuresByKind[kind] = (peer.metrics.failuresByKind[kind] ?? 0) + 1;
     peer.metrics.lastFailureAt = Date.now();
     peer.metrics.lastFailureKind = kind;
-    peer.metrics.lastFailureMessage = error instanceof Error ? error.message : String(error);
+    peer.metrics.lastFailureMessage = safeForensicText(error);
 
     if (peer.metrics.consecutiveFailures >= this.cfg.failureThreshold || peer.state === 'half-open') {
       peer.state = 'open';
@@ -207,8 +242,8 @@ export class MeshResilienceController {
 
     const record: MeshForensicRecord = {
       at: Date.now(), target, capability, kind,
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
+      message: safeForensicText(error),
+      stack: error instanceof Error ? safeForensicText(error.stack) : undefined,
       attempt, retryable, circuit: peer.state,
     };
     peer.forensic.push(record);
@@ -222,17 +257,18 @@ export class MeshResilienceController {
     const idempotent = options.idempotent ?? isIdempotentCapability(capability);
     const retriesAllowed = idempotent ? this.cfg.maxRetries : 0;
     for (let attempt = 0; attempt <= retriesAllowed; attempt += 1) {
+      const startedAt = Date.now();
       try {
         this.begin(target);
         const result = await operation(attempt);
-        this.success(target);
+        this.success(target, Date.now() - startedAt);
         return result;
       } catch (error) {
         const retryable = idempotent && isRetryableMeshError(error) && attempt < retriesAllowed;
         this.failure(target, capability, error, attempt, retryable);
         if (!retryable) break;
         this.retry(target);
-        await sleep(backoffDelayMs(attempt, this.cfg));
+        await sleep(jitteredBackoffDelayMs(attempt, this.cfg));
       }
     }
     if (options.fallback) {
@@ -264,6 +300,14 @@ export class MeshResilienceController {
       '# TYPE n02_mesh_failures_by_kind_total counter',
       '# HELP n02_mesh_retries_total Total Mesh retries.',
       '# TYPE n02_mesh_retries_total counter',
+      '# HELP n02_mesh_latency_ms_total Sum of outbound Mesh request latency in milliseconds.',
+      '# TYPE n02_mesh_latency_ms_total counter',
+      '# HELP n02_mesh_recovery_ms_total Sum of circuit recovery times in milliseconds.',
+      '# TYPE n02_mesh_recovery_ms_total counter',
+      '# HELP n02_mesh_circuit_opens_total Number of circuit openings.',
+      '# TYPE n02_mesh_circuit_opens_total counter',
+      '# HELP n02_mesh_fallbacks_total Number of fallback activations.',
+      '# TYPE n02_mesh_fallbacks_total counter',
       '# HELP n02_mesh_circuit_state Circuit state: 0=closed, 1=open, 2=half-open.',
       '# TYPE n02_mesh_circuit_state gauge',
     ];
@@ -273,6 +317,10 @@ export class MeshResilienceController {
       lines.push(`n02_mesh_requests_total{target="${label}"} ${peer.metrics.requests}`);
       lines.push(`n02_mesh_failures_total{target="${label}"} ${peer.metrics.failures}`);
       lines.push(`n02_mesh_retries_total{target="${label}"} ${peer.metrics.retries}`);
+      lines.push(`n02_mesh_latency_ms_total{target="${label}"} ${peer.metrics.totalLatencyMs}`);
+      lines.push(`n02_mesh_recovery_ms_total{target="${label}"} ${peer.metrics.totalRecoveryMs}`);
+      lines.push(`n02_mesh_circuit_opens_total{target="${label}"} ${peer.metrics.circuitOpens}`);
+      lines.push(`n02_mesh_fallbacks_total{target="${label}"} ${peer.metrics.fallbacks}`);
       lines.push(`n02_mesh_circuit_state{target="${label}"} ${state}`);
       for (const [kind, count] of Object.entries(peer.metrics.failuresByKind)) {
         lines.push(`n02_mesh_failures_by_kind_total{target="${label}",kind="${kind}"} ${count}`);

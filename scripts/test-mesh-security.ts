@@ -15,8 +15,8 @@ const unsigned = {
   id: 'msg-1',
   messageId: 'msg-1',
   correlationId: 'corr-1',
-  source: 'N02',
-  target: 'N01',
+  source: 'N01',
+  target: 'N02',
   kind: 'request' as const,
   type: 'CAPABILITY_REQUEST' as const,
   capability: 'mesh.ping',
@@ -33,12 +33,17 @@ const replay = new Set<string>();
 verifyMeshMessage(signed, secret, Date.now(), MAX_CLOCK_SKEW_MS, replay);
 assert.throws(() => verifyMeshMessage(signed, secret, Date.now(), MAX_CLOCK_SKEW_MS, replay), /REPLAY_DETECTED/);
 
-const tampered = { ...signed, payload: { ok: false } };
-assert.throws(() => verifyMeshMessage(tampered, secret), /HMAC_INVALID/);
+for (const mutate of [
+  { ...signed, payload: { ok: false } },
+  { ...signed, capability: 'ai.generate' },
+  { ...signed, kind: 'event' as const },
+  { ...signed, type: 'HEALTH' as const },
+]) {
+  assert.throws(() => verifyMeshMessage(mutate, secret), /HMAC_INVALID/);
+}
 
 const stale = { ...signed, nonce: 'fedcba9876543210', timestamp: Date.now() - MAX_CLOCK_SKEW_MS - 1 };
 assert.throws(() => verifyMeshMessage(stale, secret), /CLOCK_SKEW/);
-
 assert.throws(() => verifyMeshMessage({ ...signed, hmac: 'bad' }, secret), /HMAC_FORMAT_INVALID/);
 
 console.log('N02 Mesh security: PASS');
