@@ -2,6 +2,7 @@ import { SoulMeshCapabilityRegistry } from '../src/soul-mesh/SoulMeshCapabilityR
 import { executeN02Capability } from '../services/soulMeshRuntime';
 import { normalizeSoulMeshWireMessage, SOUL_NUCLEI, SOUL_MESH_PROTOCOL, type SoulNucleusId } from '../src/soul-mesh/SoulMeshWireContract';
 import { createSecureFields, signMeshMessage, verifyMeshMessage, type SecureMeshMessage } from '../src/soul-mesh/SoulMeshSecurity';
+import { meshResilience } from './soul-mesh/resilience';
 
 type NucleusId = SoulNucleusId;
 const NUCLEUS_ID: NucleusId = 'N02';
@@ -21,6 +22,10 @@ const hmacSecret = () => String((globalThis as any).process?.env?.SOUL_MESH_HMAC
 const production = () => String((globalThis as any).process?.env?.NODE_ENV ?? '').toLowerCase() === 'production';
 const authDisabled = () => !production() && String((globalThis as any).process?.env?.MESH_AUTH_DISABLED ?? 'false').toLowerCase() === 'true';
 const token = () => String((globalThis as any).process?.env?.SOUL_MESH_TOKEN ?? '').trim();
+
+function recordInboundFailure(source: string, capability: string, error: unknown, attempt = 0): void {
+  meshResilience.failure(source || 'unknown', capability || '__invalid__', error, attempt, false);
+}
 
 function pruneNonces(): void {
   while (seenNonces.size >= MAX_SEEN_NONCES) {
@@ -75,20 +80,30 @@ export default async function handler(req: any, res: any) {
   res.setHeader?.('allow', 'POST');
 
   const rawLength = Number(req.headers?.['content-length'] ?? 0);
-  if (Number.isFinite(rawLength) && rawLength > MAX_BODY_BYTES) return send(res, 413, { error: 'PAYLOAD_TOO_LARGE' });
+  if (Number.isFinite(rawLength) && rawLength > MAX_BODY_BYTES) {
+    const error = new Error('PAYLOAD_TOO_LARGE');
+    recordInboundFailure('unknown', '__transport__', error);
+    return send(res, 413, { error: error.message });
+  }
 
   let m;
   try {
     m = normalizeSoulMeshWireMessage(req.body);
   } catch (error) {
+    recordInboundFailure('unknown', '__parse__', error);
     return send(res, 400, { error: error instanceof Error ? error.message : 'INVALID_SOUL_MESH_MESSAGE' });
   }
 
-  if (m.target !== NUCLEUS_ID || m.source === NUCLEUS_ID) return send(res, 400, { error: 'INVALID_SOUL_MESH_ROUTE' });
+  if (m.target !== NUCLEUS_ID || m.source === NUCLEUS_ID) {
+    const error = new Error('INVALID_SOUL_MESH_ROUTE');
+    recordInboundFailure(m.source, m.capability, error);
+    return send(res, 400, { error: error.message });
+  }
 
   try {
     authorized(req, m as SecureMeshMessage);
   } catch (error) {
+    recordInboundFailure(m.source, m.capability, error);
     const code = error instanceof Error ? error.message : 'SOUL_MESH_UNAUTHORIZED';
     const status = code === 'SOUL_MESH_AUTH_NOT_CONFIGURED' ? 503 : code.includes('UNAUTHORIZED') || code.includes('HMAC') || code.includes('REPLAY') ? 401 : 400;
     return send(res, status, { error: code });
@@ -115,17 +130,26 @@ export default async function handler(req: any, res: any) {
     capabilities: registry.getAll().map(c => ({ ...c, executable: registry.canExecute(c.id) })),
   }));
 
-  if (!registry.has(m.capability)) return send(res, 501, makeResponse(m.source, m.correlationId, m.capability, 'error', {
-    code: 'CAPABILITY_NOT_DECLARED', nucleus: NUCLEUS_ID, capability: m.capability,
-  }));
-  if (!registry.canExecute(m.capability)) return send(res, 501, makeResponse(m.source, m.correlationId, m.capability, 'error', {
-    code: 'CAPABILITY_HANDLER_NOT_REGISTERED', nucleus: NUCLEUS_ID, capability: m.capability,
-  }));
+  if (!registry.has(m.capability)) {
+    const error = new Error('CAPABILITY_NOT_DECLARED');
+    recordInboundFailure(m.source, m.capability, error);
+    return send(res, 501, makeResponse(m.source, m.correlationId, m.capability, 'error', {
+      code: error.message, nucleus: NUCLEUS_ID, capability: m.capability,
+    }));
+  }
+  if (!registry.canExecute(m.capability)) {
+    const error = new Error('CAPABILITY_HANDLER_NOT_REGISTERED');
+    recordInboundFailure(m.source, m.capability, error);
+    return send(res, 501, makeResponse(m.source, m.correlationId, m.capability, 'error', {
+      code: error.message, nucleus: NUCLEUS_ID, capability: m.capability,
+    }));
+  }
 
   try {
     const payload = await registry.execute(m.capability, m.payload);
     return send(res, 200, makeResponse(m.source, m.correlationId, m.capability, 'response', payload));
   } catch (error) {
+    recordInboundFailure(m.source, m.capability, error);
     return send(res, 500, makeResponse(m.source, m.correlationId, m.capability, 'error', {
       code: 'CAPABILITY_EXECUTION_ERROR', nucleus: NUCLEUS_ID, capability: m.capability,
       message: error instanceof Error ? error.message : String(error),
