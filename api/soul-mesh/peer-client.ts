@@ -1,3 +1,5 @@
+import { meshResilience, isIdempotentCapability } from './resilience';
+
 export type NucleusId = 'N01' | 'N02' | 'N03' | 'N04' | 'N05' | 'N06';
 export type MeshMessage = {
   protocol: 'soul-mesh/1';
@@ -21,11 +23,16 @@ const tokens: Partial<Record<NucleusId, string>> = {
   N01: env.SOUL_MESH_TOKEN_N01, N03: env.SOUL_MESH_TOKEN_N03, N04: env.SOUL_MESH_TOKEN_N04,
   N05: env.SOUL_MESH_TOKEN_N05, N06: env.SOUL_MESH_TOKEN_N06,
 };
-const uuid = () => globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`;
+
+const uuid = () => {
+  const value = globalThis.crypto?.randomUUID?.();
+  if (!value) throw new Error('SOUL_MESH_SECURE_UUID_UNAVAILABLE');
+  return value;
+};
 
 const boundedTimeout = (timeoutMs: number) => Math.min(Math.max(timeoutMs, 500), 30000);
 
-export async function sendTo(target: NucleusId, capability: string, payload: unknown, timeoutMs = 15000): Promise<MeshMessage> {
+async function sendToAttempt(target: NucleusId, capability: string, payload: unknown, timeoutMs: number): Promise<MeshMessage> {
   if (target === 'N02') throw new Error('SOUL_MESH_SELF_TARGET_NOT_ALLOWED');
   if (!capability?.trim()) throw new Error('SOUL_MESH_CAPABILITY_REQUIRED');
   const url = urls[target];
@@ -63,6 +70,16 @@ export async function sendTo(target: NucleusId, capability: string, payload: unk
   }
 }
 
+export async function sendTo(target: NucleusId, capability: string, payload: unknown, timeoutMs = 15000): Promise<MeshMessage> {
+  const normalizedCapability = capability?.trim();
+  return meshResilience.execute(
+    target,
+    normalizedCapability,
+    attempt => sendToAttempt(target, normalizedCapability, payload, timeoutMs),
+    { idempotent: isIdempotentCapability(normalizedCapability) },
+  );
+}
+
 export const requestCapability = (target: NucleusId, capability: string, payload: unknown, timeoutMs = 15000) =>
   sendTo(target, capability, payload, timeoutMs);
 
@@ -75,6 +92,9 @@ export async function pingAll(timeoutMs = 5000) {
     catch (error) { return { target, status: 'FAILED' as const, error: String(error) }; }
   }));
 }
+
+export const getMeshResilienceSnapshot = () => meshResilience.snapshot();
+export const getMeshResiliencePrometheus = () => meshResilience.prometheus();
 
 export const N02_OUT_CHANNELS = PEERS.map(x => `N02.OUT.${x}`);
 export const N02_IN_CHANNELS = PEERS.map(x => `N02.IN.${x}`);
