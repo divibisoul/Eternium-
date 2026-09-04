@@ -43,7 +43,15 @@ const uuid = () => {
 
 const boundedTimeout = (timeoutMs: number) => Math.min(Math.max(timeoutMs, 500), 30000);
 
-function signedPayload(capability: string, payload: unknown): unknown {
+function typeForCapability(capability: string): NonNullable<MeshMessage['type']> {
+  if (capability === 'mesh.ping') return 'PING';
+  if (capability === 'mesh.health') return 'HEALTH';
+  if (capability === 'mesh.describe' || capability === 'capability.list') return 'CAPABILITY_REQUEST';
+  return 'TASK';
+}
+
+function securePayload(capability: string, payload: unknown, type: NonNullable<MeshMessage['type']>): unknown {
+  if (type === 'PING' || type === 'HEALTH') return payload;
   if (payload && typeof payload === 'object' && !Array.isArray(payload)) {
     const object = payload as Record<string, unknown>;
     if (object.capabilityId !== undefined && object.capabilityId !== capability) {
@@ -58,7 +66,8 @@ function secureMessage(message: MeshMessage): MeshMessage {
   const secret = hmacSecret();
   if (!secret) return message;
   const secure = createSecureFields();
-  const securePayload = signedPayload(message.capability, message.payload);
+  const type = typeForCapability(message.capability);
+  const payload = securePayload(message.capability, message.payload, type);
   const unsigned = {
     protocol: message.protocol,
     ...secure,
@@ -67,18 +76,12 @@ function secureMessage(message: MeshMessage): MeshMessage {
     source: message.source,
     target: message.target,
     kind: message.kind,
-    type: message.type ?? 'TASK',
+    type,
     capability: message.capability,
-    payload: securePayload,
+    payload,
     timestamp: message.timestamp,
   } as Omit<SecureMeshMessage, 'hmac'>;
-  return {
-    ...message,
-    ...secure,
-    type: unsigned.type,
-    payload: securePayload,
-    hmac: signMeshMessage(unsigned, secret),
-  };
+  return { ...message, ...secure, type, payload, hmac: signMeshMessage(unsigned, secret) };
 }
 
 async function sendToAttempt(target: NucleusId, capability: string, payload: unknown, timeoutMs: number): Promise<MeshMessage> {
@@ -90,7 +93,7 @@ async function sendToAttempt(target: NucleusId, capability: string, payload: unk
   const correlationId = uuid();
   const message = secureMessage({
     protocol: 'soul-mesh/1', id: uuid(), correlationId, source: 'N02', target,
-    kind: 'request', type: hmacSecret() ? 'TASK' : 'request' as never, capability: capability.trim(), payload, timestamp: Date.now(),
+    kind: 'request', capability: capability.trim(), payload, timestamp: Date.now(),
   });
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), boundedTimeout(timeoutMs));
@@ -103,25 +106,21 @@ async function sendToAttempt(target: NucleusId, capability: string, payload: unk
       signal: controller.signal,
     });
     const text = await response.text();
-    const rawBody = JSON.parse(text) as Record<string, unknown>;
+    let rawBody: Record<string, unknown>;
+    try { rawBody = JSON.parse(text) as Record<string, unknown>; }
+    catch { throw new Error(`SOUL_MESH_INVALID_REMOTE_JSON:${target}:${response.status}`); }
     if (typeof rawBody.capability !== 'string' || !String(rawBody.capability).trim()) rawBody.capability = capability;
     const body = normalizeSoulMeshWireMessage(rawBody) as MeshMessage;
     if (body.correlationId !== correlationId) throw new Error('SOUL_MESH_CORRELATION_MISMATCH');
     if (body.source !== target || body.target !== 'N02') throw new Error('SOUL_MESH_IDENTITY_MISMATCH');
     const secret = hmacSecret();
-    if (secret) {
-      verifyMeshMessage(body as SecureMeshMessage, secret, Date.now(), 30000, seenNonces);
-    }
+    if (secret) verifyMeshMessage(body as SecureMeshMessage, secret, Date.now(), 30000, seenNonces);
     if (!response.ok || body.kind === 'error') {
       const code = body.payload && typeof body.payload === 'object' && 'code' in body.payload
         ? String((body.payload as { code?: unknown }).code) : String(response.status);
       throw new Error(`SOUL_MESH_REMOTE_ERROR:${target}:${code}`);
     }
     return body;
-  } catch (error) {
-    if (error instanceof Error && error.message.startsWith('SOUL_MESH_INVALID_REMOTE_JSON')) throw error;
-    if (error instanceof SyntaxError) throw new Error(`SOUL_MESH_INVALID_REMOTE_JSON:${target}`);
-    throw error;
   } finally {
     clearTimeout(timeout);
   }
