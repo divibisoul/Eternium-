@@ -10,7 +10,8 @@
     "test:resilience": "node --experimental-strip-types scripts/test-mesh-resilience.ts",
     "test:security": "node --experimental-strip-types scripts/test-mesh-security.ts",
     "test:compat": "node --experimental-strip-types scripts/test-n01-n02-compat.ts",
-    "test:mesh": "npm run test:resilience && npm run test:security && npm run test:compat"
+    "test:capabilities": "node --experimental-strip-types scripts/test-n02-capability-completeness.ts",
+    "test:mesh": "npm run test:resilience && npm run test:security && npm run test:compat && npm run test:capabilities"
   },
   "dependencies": {
     "react-dom": "^19.1.0",
