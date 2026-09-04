@@ -23,13 +23,6 @@ export interface SecureMeshMessage {
   ttl?: number;
 }
 
-function signedPayload(message: Pick<SecureMeshMessage, 'capability' | 'payload'>): unknown {
-  if (message.payload && typeof message.payload === 'object' && !Array.isArray(message.payload)) {
-    return { capability: message.capability, ...(message.payload as Record<string, unknown>) };
-  }
-  return { capability: message.capability, payload: message.payload };
-}
-
 function canonical(message: Omit<SecureMeshMessage, 'hmac'>): string {
   return JSON.stringify({
     version: message.version,
@@ -40,9 +33,9 @@ function canonical(message: Omit<SecureMeshMessage, 'hmac'>): string {
     timestamp: message.timestamp,
     nonce: message.nonce,
     correlationId: message.correlationId,
-    type: message.type ?? (message.kind === 'request' ? 'CAPABILITY_REQUEST' : message.kind === 'response' ? 'TASK_RESULT' : 'ERROR'),
+    type: message.type ?? (message.kind === 'request' ? 'TASK' : message.kind === 'response' ? 'TASK_RESULT' : 'ERROR'),
     ...(message.ttl === undefined ? {} : { ttl: message.ttl }),
-    payload: signedPayload(message),
+    payload: message.payload,
   });
 }
 
