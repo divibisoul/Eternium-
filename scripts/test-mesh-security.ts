@@ -25,20 +25,20 @@ const unsigned = {
   nonce: '0123456789abcdef',
 };
 
-const signed = { ...unsigned, hmac: signMeshMessage(unsigned, secret) };
+const signed = { ...unsigned, hmac: await signMeshMessage(unsigned, secret) };
 assert.equal(signed.hmac.length, 64);
-verifyMeshMessage(signed, secret);
+await verifyMeshMessage(signed, secret);
 
 const replay = new Set<string>();
-verifyMeshMessage(signed, secret, Date.now(), MAX_CLOCK_SKEW_MS, replay);
-assert.throws(() => verifyMeshMessage(signed, secret, Date.now(), MAX_CLOCK_SKEW_MS, replay), /REPLAY_DETECTED/);
+await verifyMeshMessage(signed, secret, Date.now(), MAX_CLOCK_SKEW_MS, replay);
+await assert.rejects(() => verifyMeshMessage(signed, secret, Date.now(), MAX_CLOCK_SKEW_MS, replay), /REPLAY_DETECTED/);
 
 const tampered = { ...signed, payload: { ok: false } };
-assert.throws(() => verifyMeshMessage(tampered, secret), /HMAC_INVALID/);
+await assert.rejects(() => verifyMeshMessage(tampered, secret), /HMAC_INVALID/);
 
 const stale = { ...signed, nonce: 'fedcba9876543210', timestamp: Date.now() - MAX_CLOCK_SKEW_MS - 1 };
-assert.throws(() => verifyMeshMessage(stale, secret), /CLOCK_SKEW/);
+await assert.rejects(() => verifyMeshMessage(stale, secret), /CLOCK_SKEW/);
 
-assert.throws(() => verifyMeshMessage({ ...signed, hmac: 'bad' }, secret), /HMAC_FORMAT_INVALID/);
+await assert.rejects(() => verifyMeshMessage({ ...signed, hmac: 'bad' }, secret), /HMAC_FORMAT_INVALID/);
 
 console.log('N02 Mesh security: PASS');
