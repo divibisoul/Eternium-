@@ -41,6 +41,7 @@ export interface MeshPeerMetrics {
   circuitOpens: number;
   fallbacks: number;
   consecutiveFailures: number;
+  failuresByKind: Partial<Record<MeshFailureKind, number>>;
   lastFailureAt?: number;
   lastFailureKind?: MeshFailureKind;
   lastFailureMessage?: string;
@@ -72,6 +73,21 @@ const DEFAULTS: Required<MeshResilienceConfig> = {
   forensicLimit: 200,
 };
 
+function envNumber(name: string): number | undefined {
+  const value = Number((globalThis as any).process?.env?.[name]);
+  return Number.isFinite(value) ? value : undefined;
+}
+
+function envConfig(): MeshResilienceConfig {
+  return {
+    failureThreshold: envNumber('N02_MESH_FAILURE_THRESHOLD'),
+    resetTimeoutMs: envNumber('N02_MESH_RESET_TIMEOUT_MS'),
+    maxRetries: envNumber('N02_MESH_MAX_RETRIES'),
+    baseBackoffMs: envNumber('N02_MESH_BASE_BACKOFF_MS'),
+    maxBackoffMs: envNumber('N02_MESH_MAX_BACKOFF_MS'),
+  };
+}
+
 function positiveInt(value: number | undefined, fallback: number): number {
   return Number.isFinite(value) && Number(value) > 0 ? Math.floor(Number(value)) : fallback;
 }
@@ -93,12 +109,7 @@ function configOf(input?: MeshResilienceConfig): Required<MeshResilienceConfig> 
 }
 
 export function isIdempotentCapability(capability: string): boolean {
-  return new Set([
-    'mesh.ping',
-    'mesh.health',
-    'mesh.describe',
-    'capability.list',
-  ]).has(capability.trim());
+  return new Set(['mesh.ping', 'mesh.health', 'mesh.describe', 'capability.list']).has(capability.trim());
 }
 
 export function classifyMeshError(error: unknown): MeshFailureKind {
@@ -132,24 +143,17 @@ export class MeshResilienceController {
   private readonly peers = new Map<string, PeerState>();
 
   constructor(config?: MeshResilienceConfig) {
-    this.cfg = configOf(config);
+    this.cfg = configOf({ ...envConfig(), ...config });
   }
 
   private state(target: string): PeerState {
     let value = this.peers.get(target);
     if (!value) {
       value = {
-        state: 'closed',
-        openedAt: 0,
-        halfOpenProbe: false,
+        state: 'closed', openedAt: 0, halfOpenProbe: false,
         metrics: {
-          requests: 0,
-          successes: 0,
-          failures: 0,
-          retries: 0,
-          circuitOpens: 0,
-          fallbacks: 0,
-          consecutiveFailures: 0,
+          requests: 0, successes: 0, failures: 0, retries: 0, circuitOpens: 0, fallbacks: 0,
+          consecutiveFailures: 0, failuresByKind: {},
         },
         forensic: [],
       };
@@ -186,10 +190,12 @@ export class MeshResilienceController {
 
   failure(target: string, capability: string, error: unknown, attempt: number, retryable: boolean): void {
     const peer = this.state(target);
+    const kind = classifyMeshError(error);
     peer.metrics.failures += 1;
     peer.metrics.consecutiveFailures += 1;
+    peer.metrics.failuresByKind[kind] = (peer.metrics.failuresByKind[kind] ?? 0) + 1;
     peer.metrics.lastFailureAt = Date.now();
-    peer.metrics.lastFailureKind = classifyMeshError(error);
+    peer.metrics.lastFailureKind = kind;
     peer.metrics.lastFailureMessage = error instanceof Error ? error.message : String(error);
 
     if (peer.metrics.consecutiveFailures >= this.cfg.failureThreshold || peer.state === 'half-open') {
@@ -200,37 +206,21 @@ export class MeshResilienceController {
     }
 
     const record: MeshForensicRecord = {
-      at: Date.now(),
-      target,
-      capability,
-      kind: classifyMeshError(error),
+      at: Date.now(), target, capability, kind,
       message: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
-      attempt,
-      retryable,
-      circuit: peer.state,
+      attempt, retryable, circuit: peer.state,
     };
     peer.forensic.push(record);
     if (peer.forensic.length > this.cfg.forensicLimit) peer.forensic.splice(0, peer.forensic.length - this.cfg.forensicLimit);
   }
 
-  retry(target: string): void {
-    this.state(target).metrics.retries += 1;
-  }
+  retry(target: string): void { this.state(target).metrics.retries += 1; }
+  fallback(target: string): void { this.state(target).metrics.fallbacks += 1; }
 
-  fallback(target: string): void {
-    this.state(target).metrics.fallbacks += 1;
-  }
-
-  async execute<T>(
-    target: string,
-    capability: string,
-    operation: (attempt: number) => Promise<T>,
-    options: { idempotent?: boolean; fallback?: () => Promise<T> } = {},
-  ): Promise<T> {
+  async execute<T>(target: string, capability: string, operation: (attempt: number) => Promise<T>, options: { idempotent?: boolean; fallback?: () => Promise<T> } = {}): Promise<T> {
     const idempotent = options.idempotent ?? isIdempotentCapability(capability);
     const retriesAllowed = idempotent ? this.cfg.maxRetries : 0;
-
     for (let attempt = 0; attempt <= retriesAllowed; attempt += 1) {
       try {
         this.begin(target);
@@ -245,12 +235,10 @@ export class MeshResilienceController {
         await sleep(backoffDelayMs(attempt, this.cfg));
       }
     }
-
     if (options.fallback) {
       this.fallback(target);
       return options.fallback();
     }
-
     throw new Error(`SOUL_MESH_RESILIENCE_EXHAUSTED:${target}:${capability}`);
   }
 
@@ -259,7 +247,7 @@ export class MeshResilienceController {
     for (const [target, peer] of this.peers) {
       peers[target] = {
         state: peer.state,
-        metrics: { ...peer.metrics },
+        metrics: { ...peer.metrics, failuresByKind: { ...peer.metrics.failuresByKind } },
         forensic: peer.forensic.map(record => ({ ...record })),
       };
     }
@@ -272,6 +260,8 @@ export class MeshResilienceController {
       '# TYPE n02_mesh_requests_total counter',
       '# HELP n02_mesh_failures_total Total outbound Mesh failures.',
       '# TYPE n02_mesh_failures_total counter',
+      '# HELP n02_mesh_failures_by_kind_total Total outbound Mesh failures by signature.',
+      '# TYPE n02_mesh_failures_by_kind_total counter',
       '# HELP n02_mesh_retries_total Total Mesh retries.',
       '# TYPE n02_mesh_retries_total counter',
       '# HELP n02_mesh_circuit_state Circuit state: 0=closed, 1=open, 2=half-open.',
@@ -284,6 +274,9 @@ export class MeshResilienceController {
       lines.push(`n02_mesh_failures_total{target="${label}"} ${peer.metrics.failures}`);
       lines.push(`n02_mesh_retries_total{target="${label}"} ${peer.metrics.retries}`);
       lines.push(`n02_mesh_circuit_state{target="${label}"} ${state}`);
+      for (const [kind, count] of Object.entries(peer.metrics.failuresByKind)) {
+        lines.push(`n02_mesh_failures_by_kind_total{target="${label}",kind="${kind}"} ${count}`);
+      }
     }
     return `${lines.join('\n')}\n`;
   }
