@@ -1,5 +1,3 @@
-import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
-
 export const SOUL_MESH_VERSION = '1.0' as const;
 export const SOUL_MESH_CONTRACT_VERSION = '1.1.0' as const;
 export const MAX_CLOCK_SKEW_MS = 30000;
@@ -23,6 +21,8 @@ export interface SecureMeshMessage {
   ttl?: number;
 }
 
+const textEncoder = new TextEncoder();
+
 function canonical(message: Omit<SecureMeshMessage, 'hmac'>): string {
   return JSON.stringify({
     version: message.version,
@@ -39,28 +39,60 @@ function canonical(message: Omit<SecureMeshMessage, 'hmac'>): string {
   });
 }
 
-function secretBytes(secret: string): Buffer {
-  const value = Buffer.from(secret.trim(), 'utf8');
+function requireCrypto(): Crypto {
+  const value = globalThis.crypto;
+  if (!value?.subtle || !value.randomUUID) throw new Error('SOUL_MESH_WEBCRYPTO_UNAVAILABLE');
+  return value;
+}
+
+function secretBytes(secret: string): Uint8Array {
+  const value = textEncoder.encode(secret.trim());
   if (value.length < 16) throw new Error('SOUL_MESH_HMAC_SECRET_TOO_SHORT');
   return value;
 }
 
-export function signMeshMessage(message: Omit<SecureMeshMessage, 'hmac'>, secret: string): string {
-  return createHmac('sha256', secretBytes(secret)).update(canonical(message), 'utf8').digest('hex');
+function bytesToHex(bytes: ArrayBuffer): string {
+  return Array.from(new Uint8Array(bytes), byte => byte.toString(16).padStart(2, '0')).join('');
+}
+
+function hexToBytes(hex: string): Uint8Array {
+  const out = new Uint8Array(hex.length / 2);
+  for (let i = 0; i < out.length; i += 1) out[i] = Number.parseInt(hex.slice(i * 2, i * 2 + 2), 16);
+  return out;
+}
+
+function constantTimeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= a[i] ^ b[i];
+  return diff === 0;
+}
+
+async function importKey(secret: string): Promise<CryptoKey> {
+  const crypto = requireCrypto();
+  return crypto.subtle.importKey('raw', secretBytes(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+}
+
+export async function signMeshMessage(message: Omit<SecureMeshMessage, 'hmac'>, secret: string): Promise<string> {
+  const crypto = requireCrypto();
+  const key = await importKey(secret);
+  const signature = await crypto.subtle.sign('HMAC', key, textEncoder.encode(canonical(message)));
+  return bytesToHex(signature);
 }
 
 export function createSecureFields(): Pick<SecureMeshMessage, 'version' | 'contractVersion' | 'nonce' | 'messageId'> {
-  const messageId = randomUUID();
-  return { version: SOUL_MESH_VERSION, contractVersion: SOUL_MESH_CONTRACT_VERSION, nonce: randomUUID(), messageId };
+  const crypto = requireCrypto();
+  const messageId = crypto.randomUUID();
+  return { version: SOUL_MESH_VERSION, contractVersion: SOUL_MESH_CONTRACT_VERSION, nonce: crypto.randomUUID(), messageId };
 }
 
-export function verifyMeshMessage(
+export async function verifyMeshMessage(
   message: SecureMeshMessage,
   secret: string,
   nowMs = Date.now(),
   maxClockSkewMs = MAX_CLOCK_SKEW_MS,
   seenNonces?: Set<string>,
-): void {
+): Promise<void> {
   if (message.version !== SOUL_MESH_VERSION || message.contractVersion !== SOUL_MESH_CONTRACT_VERSION) {
     throw new Error('SOUL_MESH_UNSUPPORTED_CONTRACT_VERSION');
   }
@@ -70,10 +102,8 @@ export function verifyMeshMessage(
   }
   if (!/^[0-9a-f]{64}$/i.test(message.hmac)) throw new Error('SOUL_MESH_HMAC_FORMAT_INVALID');
   if (seenNonces?.has(message.nonce)) throw new Error('SOUL_MESH_REPLAY_DETECTED');
-  const expected = Buffer.from(signMeshMessage({ ...message, hmac: undefined as never }, secret), 'hex');
-  const supplied = Buffer.from(message.hmac, 'hex');
-  if (expected.length !== supplied.length || !timingSafeEqual(expected, supplied)) {
-    throw new Error('SOUL_MESH_HMAC_INVALID');
-  }
+  const expected = hexToBytes(await signMeshMessage({ ...message, hmac: undefined as never }, secret));
+  const supplied = hexToBytes(message.hmac);
+  if (!constantTimeEqual(expected, supplied)) throw new Error('SOUL_MESH_HMAC_INVALID');
   seenNonces?.add(message.nonce);
 }
