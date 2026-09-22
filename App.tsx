@@ -62,8 +62,9 @@ const autonomousOperations: { type: OperationType; totalSteps: number; message: 
 const initialDeployedCapabilities: DeployedCapability[] = allCapabilities.map(cap => ({
     id: cap.id,
     name: cap.name,
-    status: 'Estável', // Initial status
-    metric: 75 + Math.random() * 25 // Initial random metric
+    status: 'Monitorando',
+    metric: 0,
+    measured: false,
 }));
 
 
@@ -78,10 +79,10 @@ const App: React.FC = () => {
     const [activeMode, setActiveMode] = usePersistentState<SystemAspect>('aeternum_activeMode', SystemAspect.SYNTHESIS);
     const [isExpertMode, setIsExpertMode] = usePersistentState<boolean>('aeternum_isExpertMode', false);
     
-    const [deployedCapabilities, setDeployedCapabilities] = usePersistentState<DeployedCapability[]>('aeternum_deployed_capabilities_v5', initialDeployedCapabilities);
+    const [deployedCapabilities, setDeployedCapabilities] = usePersistentState<DeployedCapability[]>('aeternum_deployed_capabilities_v6_reality', initialDeployedCapabilities);
 
     const [isFullCognitionMode, setIsFullCognitionMode] = usePersistentState<boolean>('aeternum_full_cognition', false);
-    const [activeOperations, setActiveOperations] = usePersistentState<ActiveOperation[]>('aeternum_active_operations', []);
+    const [activeOperations, setActiveOperations] = usePersistentState<ActiveOperation[]>('aeternum_active_operations_v6_reality', []);
     const [isOmniMode, setIsOmniMode] = usePersistentState<boolean>('aeternum_omnimode', true); 
 
 
@@ -156,32 +157,13 @@ const App: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            setActiveOperations(prevOps => {
-                if (prevOps.filter(op => op.status === OperationStatus.IN_PROGRESS).length === 0) {
-                    return prevOps;
-                }
-
-                let hasChanged = false;
-                const updatedOps = prevOps.map(op => {
-                    if (op.status === OperationStatus.IN_PROGRESS) {
-                        hasChanged = true;
-                        const newProgress = op.progress + 1;
-                        if (newProgress >= op.totalSteps) {
-                            logEvent(AuditEventType.OPERATION_COMPLETE, `Operação ${op.type} concluída.`, 'info');
-                            return { ...op, progress: op.totalSteps, status: OperationStatus.DONE };
-                        }
-                        return { ...op, progress: newProgress };
-                    }
-                    return op;
-                });
-                
-                return hasChanged ? updatedOps : prevOps;
-            });
-        }, 1200);
-
-        return () => clearInterval(interval);
-    }, [logEvent]);
+        // Sem executor observado, uma operação não pode avançar nem ser marcada concluída.
+        setActiveOperations(prev => prev.map(op =>
+            op.status === OperationStatus.IN_PROGRESS
+                ? { ...op, status: OperationStatus.EXECUTION_REQUIRED, progress: 0 }
+                : op
+        ));
+    }, [setActiveOperations]);
 
     useEffect(() => {
         const completedOp = activeOperations.find(op => op.status === OperationStatus.DONE);
@@ -202,22 +184,10 @@ const App: React.FC = () => {
     }, [hasCriticalErrors]);
 
     useEffect(() => {
-        const timer = setInterval(() => {
-            if (isLoading || activeOperations.length > 2) return;
-
-            const availableOps = autonomousOperations.filter(op => 
-                !activeOperations.some(active => active.type === op.type) &&
-                (!op.requiredCapability || deployedCapabilities.some(c => c.id === op.requiredCapability))
-            );
-
-            if (availableOps.length > 0 && Math.random() < 0.15) { // 15% chance every 10 seconds
-                const opToStart = availableOps[Math.floor(Math.random() * availableOps.length)];
-                initiateOperation(opToStart.type, opToStart.totalSteps, opToStart.message);
-            }
-        }, 10000);
-
-        return () => clearInterval(timer);
-    }, [isLoading, activeOperations, deployedCapabilities, initiateOperation]);
+        // O catálogo de operações permanece disponível para execução explícita,
+        // mas nenhuma operação é iniciada por probabilidade/aleatoriedade.
+        return undefined;
+    }, []);
     
      const handleSendMessage = async (text: string, imageFile: File | null = null) => {
         if (isLoading) return;

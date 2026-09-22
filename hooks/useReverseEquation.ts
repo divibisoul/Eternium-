@@ -9,10 +9,11 @@ const strategies = [
 
 const useReverseEquation = () => {
     const [metrics, setMetrics] = useState({
-        latency: 250,
-        cpuLoad: 50,
-        memoryUsage: 3.0,
-        ethicalScore: 0.98,
+        latency: 0,
+        cpuLoad: 0,
+        memoryUsage: 0,
+        ethicalScore: 0,
+        measured: false,
     });
 
     const [coreParams, setCoreParams] = useState({
@@ -24,24 +25,18 @@ const useReverseEquation = () => {
 
     useEffect(() => {
         const interval = setInterval(() => {
-            // Simulate new metrics from RealityGuardian(Φ)
-            const newLatency = 150 + Math.random() * 450;
-            const newCpuLoad = 30 + Math.random() * 60;
-            const newMemoryUsage = 2.5 + Math.random() * 2.5;
-            const newEthicalScore = 0.95 + Math.random() * 0.05;
+            if (!metricsRef.current.measured) return;
 
-            setMetrics({
-                latency: newLatency,
-                cpuLoad: newCpuLoad,
-                memoryUsage: newMemoryUsage,
-                ethicalScore: newEthicalScore,
-            });
+            const newLatency = metricsRef.current.latency;
+            const newCpuLoad = metricsRef.current.cpuLoad;
+            const newMemoryUsage = metricsRef.current.memoryUsage;
+            const newEthicalScore = metricsRef.current.ethicalScore;
             
             let newStrategy = strategies[3]; // Default to nominal
             let newRelevance = coreParams.relevanceThreshold;
             let newDepth = coreParams.maxInferenceDepth;
 
-            // Simulate AdaptationModule(Δ) logic
+            // Adaptação determinística sobre métricas que chegaram por uma fonte observada.
             if (newLatency > 400 && newCpuLoad > 70) {
                 newStrategy = strategies[0]; // Adapt for Speed
                 newRelevance = Math.min(0.85, coreParams.relevanceThreshold + 0.05);
@@ -68,7 +63,23 @@ const useReverseEquation = () => {
         return () => clearInterval(interval);
     }, [coreParams]);
 
-    return { metrics, coreParams, strategy };
+    const metricsRef = { current: metrics };
+    const observeMetrics = (observed: Omit<typeof metrics, 'measured'>) => {
+        if (
+            !Object.values(observed).every(value => Number.isFinite(value)) ||
+            observed.latency < 0 ||
+            observed.cpuLoad < 0 ||
+            observed.memoryUsage < 0 ||
+            observed.ethicalScore < 0 ||
+            observed.ethicalScore > 1
+        ) return false;
+        const next = { ...observed, measured: true };
+        metricsRef.current = next;
+        setMetrics(next);
+        return true;
+    };
+
+    return { metrics, coreParams, strategy, observeMetrics };
 };
 
 export default useReverseEquation;

@@ -28,7 +28,9 @@ const operationConfig: Record<OperationType, { icon: React.FC<{className?: strin
 export const OperationStatusBar: React.FC<OperationStatusBarProps> = ({ operation }) => {
     const config = operationConfig[operation.type];
     const Icon = config.icon;
-    const progressPercentage = (operation.progress / operation.totalSteps) * 100;
+    const progressPercentage = operation.status === 'EXECUTION_REQUIRED'
+        ? 0
+        : (operation.progress / operation.totalSteps) * 100;
 
     return (
         <div className="flex items-center space-x-3 bg-black/30 p-2 rounded-md">
@@ -43,7 +45,7 @@ export const OperationStatusBar: React.FC<OperationStatusBarProps> = ({ operatio
                 </div>
             </div>
             <span className="text-xs font-mono-code text-gray-400">
-                {Math.round(progressPercentage)}%
+                {operation.status === 'EXECUTION_REQUIRED' ? 'EXECUÇÃO NECESSÁRIA' : `${Math.round(progressPercentage)}%`}
             </span>
         </div>
     );
