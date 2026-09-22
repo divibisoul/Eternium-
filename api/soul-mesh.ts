@@ -89,11 +89,11 @@ async function callSara(capability:string, payload:unknown, correlationId:string
   if(!SARA_URL || (capability!=='sara.health' && !SARA_TOKEN)) throw new Error('SARA_SERVICE_NOT_CONFIGURED');
   const routes:Record<string,string>={
     'sara.health':'/health','sara.cycle':'/v1/cycle','sara.audit':'/v1/audit','sara.regenerate':'/v1/regenerate',
-    'sara.state':'/v1/state','sara.capabilities':'/v1/capabilities','sara.trace': typeof payload==='object' && payload && 'cycle_id' in payload && typeof (payload as {cycle_id?:unknown}).cycle_id==='string' ? '/v1/trace/'+encodeURIComponent((payload as {cycle_id:string}).cycle_id) : '',
+    'sara.state':'/v1/state','sara.capabilities':'/v1/capabilities','sara.clareira.audit':'/v1/clareira/audit','sara.trace': typeof payload==='object' && payload && 'cycle_id' in payload && typeof (payload as {cycle_id?:unknown}).cycle_id==='string' ? '/v1/trace/'+encodeURIComponent((payload as {cycle_id:string}).cycle_id) : '',
   };
   const route=routes[capability];
   if(!route) throw new Error('SARA_CAPABILITY_NOT_SUPPORTED');
-  const isGet=capability==='sara.health'||capability==='sara.state'||capability==='sara.capabilities'||capability==='sara.trace';
+  const isGet=capability==='sara.health'||capability==='sara.state'||capability==='sara.capabilities'||capability==='sara.clareira.audit'||capability==='sara.trace';
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),Number(process.env.SARA_REQUEST_TIMEOUT_MS||30000));
   try{
@@ -135,7 +135,7 @@ export default async function handler(req:any,res:any) {
   if (m.capability === 'mesh.handshake') {
     const out = envelope(m, 'response', {
       nucleus: NUCLEUS_ID, protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION,
-      status:'online', capabilities:[...SOUL_MESH_CAPABILITIES.map(c => c.id),'sara.health','sara.cycle','sara.audit','sara.regenerate','sara.state','sara.capabilities','sara.trace'], transports:['http','supabase-realtime']
+      status:'online', capabilities:[...SOUL_MESH_CAPABILITIES.map(c => c.id),'sara.health','sara.cycle','sara.audit','sara.regenerate','sara.state','sara.capabilities','sara.clareira.audit','sara.trace'], transports:['http','supabase-realtime']
     });
     return res.status(out.status).json(out.body);
   }
