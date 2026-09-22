@@ -86,18 +86,18 @@ function verifyHmac(m: MeshMessage, req: any): boolean {
 }
 
 async function callSara(capability:string, payload:unknown, correlationId:string): Promise<unknown> {
-  if(!SARA_URL || !SARA_TOKEN) throw new Error('SARA_SERVICE_NOT_CONFIGURED');
+  if(!SARA_URL || (capability!=='sara.health' && !SARA_TOKEN)) throw new Error('SARA_SERVICE_NOT_CONFIGURED');
   const routes:Record<string,string>={
-    'sara.cycle':'/v1/cycle','sara.audit':'/v1/audit','sara.regenerate':'/v1/regenerate',
+    'sara.health':'/health','sara.cycle':'/v1/cycle','sara.audit':'/v1/audit','sara.regenerate':'/v1/regenerate',
     'sara.state':'/v1/state','sara.capabilities':'/v1/capabilities','sara.trace': typeof payload==='object' && payload && 'cycle_id' in payload && typeof (payload as {cycle_id?:unknown}).cycle_id==='string' ? '/v1/trace/'+encodeURIComponent((payload as {cycle_id:string}).cycle_id) : '',
   };
   const route=routes[capability];
   if(!route) throw new Error('SARA_CAPABILITY_NOT_SUPPORTED');
-  const isGet=capability==='sara.state'||capability==='sara.capabilities'||capability==='sara.trace';
+  const isGet=capability==='sara.health'||capability==='sara.state'||capability==='sara.capabilities'||capability==='sara.trace';
   const controller=new AbortController();
   const timer=setTimeout(()=>controller.abort(),Number(process.env.SARA_REQUEST_TIMEOUT_MS||30000));
   try{
-    const response=await fetch(SARA_URL+route,{method:isGet?'GET':'POST',headers:{accept:'application/json','content-type':'application/json',authorization:'Bearer '+SARA_TOKEN,'x-correlation-id':correlationId},...(isGet?{}:{body:JSON.stringify({...((payload&&typeof payload==='object')?payload:{input:String(payload??'')}),...(capability==='sara.cycle'&&(!payload||typeof payload!=='object'||!('cycle_id' in payload))?{cycle_id:correlationId}:{})})}),signal:controller.signal,cache:'no-store'});
+    const response=await fetch(SARA_URL+route,{method:isGet?'GET':'POST',headers:{accept:'application/json','content-type':'application/json',...(capability==='sara.health'?{}:{authorization:'Bearer '+SARA_TOKEN}),'x-correlation-id':correlationId},...(isGet?{}:{body:JSON.stringify({...((payload&&typeof payload==='object')?payload:{input:String(payload??'')}),...(capability==='sara.cycle'&&(!payload||typeof payload!=='object'||!('cycle_id' in payload))?{cycle_id:correlationId}:{})})}),signal:controller.signal,cache:'no-store'});
     const body=await response.json().catch(()=>null);
     if(!response.ok)throw new Error('SARA_HTTP_'+response.status);
     return body;
@@ -135,7 +135,7 @@ export default async function handler(req:any,res:any) {
   if (m.capability === 'mesh.handshake') {
     const out = envelope(m, 'response', {
       nucleus: NUCLEUS_ID, protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION,
-      status:'online', capabilities:[...SOUL_MESH_CAPABILITIES.map(c => c.id),'sara.cycle','sara.audit','sara.regenerate','sara.state','sara.capabilities','sara.trace'], transports:['http','supabase-realtime']
+      status:'online', capabilities:[...SOUL_MESH_CAPABILITIES.map(c => c.id),'sara.health','sara.cycle','sara.audit','sara.regenerate','sara.state','sara.capabilities','sara.trace'], transports:['http','supabase-realtime']
     });
     return res.status(out.status).json(out.body);
   }
