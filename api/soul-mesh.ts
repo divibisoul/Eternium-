@@ -9,6 +9,8 @@ const PEERS = ['N01', 'N03', 'N04', 'N05', 'N06', 'N07'] as const;
 const MAX_BODY_BYTES = 1_000_000;
 const MAX_CLOCK_SKEW_MS = 30_000;
 const REPLAY_WINDOW_MS = 5 * 60_000;
+const SARA_URL = String(process.env.SARA_SERVICE_URL || '').trim().replace(/\/$/, '');
+const SARA_TOKEN = String(process.env.SARA_SERVICE_TOKEN || '').trim();
 const seenRequests = new Map<string, number>();
 
 type MeshMessage = {
@@ -83,6 +85,25 @@ function verifyHmac(m: MeshMessage, req: any): boolean {
   return actual.length === wanted.length && timingSafeEqual(actual, wanted);
 }
 
+async function callSara(capability:string, payload:unknown, correlationId:string): Promise<unknown> {
+  if(!SARA_URL || !SARA_TOKEN) throw new Error('SARA_SERVICE_NOT_CONFIGURED');
+  const routes:Record<string,string>={
+    'sara.cycle':'/v1/cycle','sara.audit':'/v1/audit','sara.regenerate':'/v1/regenerate',
+    'sara.state':'/v1/state','sara.capabilities':'/v1/capabilities',
+  };
+  const route=routes[capability];
+  if(!route) throw new Error('SARA_CAPABILITY_NOT_SUPPORTED');
+  const isGet=capability==='sara.state'||capability==='sara.capabilities';
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),Number(process.env.SARA_REQUEST_TIMEOUT_MS||30000));
+  try{
+    const response=await fetch(SARA_URL+route,{method:isGet?'GET':'POST',headers:{accept:'application/json','content-type':'application/json',authorization:'Bearer '+SARA_TOKEN,'x-correlation-id':correlationId},...(isGet?{}:{body:JSON.stringify({...((payload&&typeof payload==='object')?payload:{input:String(payload??'')}),...(capability==='sara.cycle'&&(!payload||typeof payload!=='object'||!('cycle_id' in payload))?{cycle_id:correlationId}:{})})}),signal:controller.signal,cache:'no-store'});
+    const body=await response.json().catch(()=>null);
+    if(!response.ok)throw new Error('SARA_HTTP_'+response.status);
+    return body;
+  } finally { clearTimeout(timer); }
+}
+
 function meshAuthorized(req: any, message: MeshMessage): boolean {
   if (process.env.SOUL_MESH_HMAC_SECRET?.trim()) return verifyHmac(message, req);
   const token = process.env.SOUL_MESH_TOKEN?.trim();
@@ -135,6 +156,17 @@ export default async function handler(req:any,res:any) {
   }
 
   if (!m.capability) return res.status(400).json({ error:'CAPABILITY_REQUIRED', correlationId:m.correlationId });
+  if (m.capability?.startsWith('sara.')) {
+    try {
+      const payload = await callSara(m.capability, m.payload, m.correlationId);
+      const out = envelope(m, 'response', payload);
+      return res.status(out.status).json(out.body);
+    } catch (error) {
+      const out = envelope(m, 'error', { code:error instanceof Error?error.message:'SARA_REQUEST_FAILED', capability:m.capability }, 502);
+      return res.status(out.status).json(out.body);
+    }
+  }
+
   if (!n02CapabilityRuntime.has(m.capability)) {
     const out = envelope(m, 'error', { code:'CAPABILITY_HANDLER_NOT_REGISTERED', nucleus:NUCLEUS_ID, capability:m.capability }, 501);
     return res.status(out.status).json(out.body);
