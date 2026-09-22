@@ -1,11 +1,11 @@
 # N02 ↔ SARA
 
-N02 exposes SARA regenerative operations through the existing /api/soul-mesh boundary.
+N02 expõe as operações regenerativas do SARA através do limite `/api/soul-mesh`.
 
-Capabilities: sara.cycle, sara.audit, sara.regenerate, sara.state, sara.capabilities.
+Capacidades: `sara.health`, `sara.cycle`, `sara.audit`, `sara.regenerate`, `sara.state`, `sara.capabilities`, `sara.trace`.
 
-Server configuration: SARA_SERVICE_URL, SARA_SERVICE_TOKEN, SARA_REQUEST_TIMEOUT_MS.
+Configuração server-side: `SARA_SERVICE_URL`, `SARA_SERVICE_TOKEN`, `SARA_REQUEST_TIMEOUT_MS`.
 
-The adapter preserves correlationId and uses Bearer authentication. Missing configuration returns an explicit SARA_SERVICE_NOT_CONFIGURED error; no fallback result is synthesized.
+`/health` é tratado separadamente por ser público; as operações `/v1/*` exigem Bearer. A correlação é preservada. Configuração ausente produz erro explícito `SARA_SERVICE_NOT_CONFIGURED`; nenhum resultado sintético é criado.
 
-Native N02 capabilities remain owned by N02. SARA adds audit/regeneration/evidence around the federated operation.
+As capacidades nativas do N02 continuam pertencendo ao N02. SARA acrescenta auditoria, regeneração, estado, descoberta e evidência ao fluxo federado.
