@@ -62,8 +62,9 @@ const autonomousOperations: { type: OperationType; totalSteps: number; message: 
 const initialDeployedCapabilities: DeployedCapability[] = allCapabilities.map(cap => ({
     id: cap.id,
     name: cap.name,
-    status: 'Estável', // Initial status
-    metric: 75 + Math.random() * 25 // Initial random metric
+    status: 'Monitorando',
+    metric: 0,
+    measured: false,
 }));
 
 
@@ -78,10 +79,10 @@ const App: React.FC = () => {
     const [activeMode, setActiveMode] = usePersistentState<SystemAspect>('aeternum_activeMode', SystemAspect.SYNTHESIS);
     const [isExpertMode, setIsExpertMode] = usePersistentState<boolean>('aeternum_isExpertMode', false);
     
-    const [deployedCapabilities, setDeployedCapabilities] = usePersistentState<DeployedCapability[]>('aeternum_deployed_capabilities_v5', initialDeployedCapabilities);
+    const [deployedCapabilities, setDeployedCapabilities] = usePersistentState<DeployedCapability[]>('aeternum_deployed_capabilities_v6_reality', initialDeployedCapabilities);
 
     const [isFullCognitionMode, setIsFullCognitionMode] = usePersistentState<boolean>('aeternum_full_cognition', false);
-    const [activeOperations, setActiveOperations] = usePersistentState<ActiveOperation[]>('aeternum_active_operations', []);
+    const [activeOperations, setActiveOperations] = usePersistentState<ActiveOperation[]>('aeternum_active_operations_v6_reality', []);
     const [isOmniMode, setIsOmniMode] = usePersistentState<boolean>('aeternum_omnimode', true); 
 
 
@@ -187,7 +188,6 @@ const App: React.FC = () => {
         // mas nenhuma operação é iniciada por probabilidade/aleatoriedade.
         return undefined;
     }, []);
-    }, [isLoading, activeOperations, deployedCapabilities, initiateOperation]);
     
      const handleSendMessage = async (text: string, imageFile: File | null = null) => {
         if (isLoading) return;
