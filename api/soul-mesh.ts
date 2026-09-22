@@ -135,7 +135,7 @@ export default async function handler(req:any,res:any) {
   if (m.capability === 'mesh.handshake') {
     const out = envelope(m, 'response', {
       nucleus: NUCLEUS_ID, protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION,
-      status:'online', capabilities:SOUL_MESH_CAPABILITIES.map(c => c.id), transports:['http','supabase-realtime']
+      status:'online', capabilities:[...SOUL_MESH_CAPABILITIES.map(c => c.id),'sara.cycle','sara.audit','sara.regenerate','sara.state','sara.capabilities'], transports:['http','supabase-realtime']
     });
     return res.status(out.status).json(out.body);
   }
