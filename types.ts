@@ -156,6 +156,7 @@ export enum AgentStatus {
     Standby = 'Em Espera',
     Analisando = 'Analisando',
     Executando = 'Executando',
+    NOT_OBSERVED = 'Não observado',
 }
 
 export interface Agent {
