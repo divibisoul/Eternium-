@@ -28,7 +28,11 @@ const operationConfig: Record<OperationType, { icon: React.FC<{className?: strin
 export const OperationProgressCard: React.FC<OperationProgressCardProps> = ({ operation }) => {
     const config = operationConfig[operation.type];
     const Icon = config.icon;
-    const progressPercentage = (operation.progress / operation.totalSteps) * 100;
+    const progressPercentage = operation.status === 'WAITING_RUNTIME'
+        ? 0
+        : operation.totalSteps > 0
+            ? (operation.progress / operation.totalSteps) * 100
+            : 0;
 
     return (
         <div className={`bg-gray-800/60 p-3 rounded-lg border ${config.color.split(' ')[1]}`}>
@@ -36,6 +40,9 @@ export const OperationProgressCard: React.FC<OperationProgressCardProps> = ({ op
                 <Icon className={`w-6 h-6 flex-shrink-0 ${config.color.split(' ')[2]}`} />
                 <div className="flex-1">
                     <p className="text-sm font-semibold text-gray-200 truncate">{operation.message}</p>
+                    {operation.status === 'WAITING_RUNTIME' && (
+                        <p className="text-[11px] text-amber-300 mt-0.5">Aguardando executor real</p>
+                    )}
                     <div className="w-full bg-gray-700 rounded-full h-2 mt-1.5 relative overflow-hidden">
                         <div 
                             className={`absolute top-0 left-0 h-full rounded-full ${config.color.split(' ')[0]} transition-all duration-500 ease-linear`}
@@ -48,7 +55,7 @@ export const OperationProgressCard: React.FC<OperationProgressCardProps> = ({ op
                     </div>
                 </div>
                 <span className="text-sm font-mono-code text-gray-400">
-                    {Math.round(progressPercentage)}%
+                    {operation.status === 'WAITING_RUNTIME' ? 'N/O' : Math.round(progressPercentage) + '%'}
                 </span>
             </div>
         </div>
