@@ -1,13 +1,13 @@
 import type { ActiveOperation } from "../../../types";
 import {
-  operationStatusBarModule,
+  projectOperation,
   type OperationDisplayProjection,
   type OperationProjectionPublisher,
 } from "./OperationStatusBarModule";
 
 /**
- * The progress card deliberately reuses OperationStatusBarModule's
- * normalization. There is one operation-progress calculation, not two.
+ * The progress card deliberately reuses the same pure projection function
+ * as the status bar. There is one operation-progress calculation, not two.
  */
 export class OperationProgressCardModule {
   readonly id = "L5.OperationProgressCardModule";
@@ -32,7 +32,7 @@ export class OperationProgressCardModule {
 
   renderOperation(operation: ActiveOperation): OperationDisplayProjection | null {
     if (!this.active) return null;
-    return operationStatusBarModule.project(operation);
+    return projectOperation(operation);
   }
 
   async publish(operation: ActiveOperation): Promise<OperationDisplayProjection | null> {
@@ -42,5 +42,5 @@ export class OperationProgressCardModule {
     return projection;
   }
 }
- 
+
 export const operationProgressCardModule = new OperationProgressCardModule();
