@@ -1,42 +1,36 @@
-
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ASASFNodesState, ASASFStatus } from '../types.ts';
 
 const INITIAL_STATE: ASASFNodesState = {
-    etr: ASASFStatus.NOMINAL,
-    ara: ASASFStatus.NOMINAL,
-    er: ASASFStatus.NOMINAL,
-    itr: ASASFStatus.NOMINAL,
-    psi: ASASFStatus.NOMINAL,
+    etr: ASASFStatus.NAO_OBSERVADO,
+    ara: ASASFStatus.NAO_OBSERVADO,
+    er: ASASFStatus.NAO_OBSERVADO,
+    itr: ASASFStatus.NAO_OBSERVADO,
+    psi: ASASFStatus.NAO_OBSERVADO,
 };
 
+/**
+ * ASASF UI projection.
+ * A local audit error is evidence of an alert, not evidence that remediation ran.
+ * Remediation stages are therefore not advanced by timers; a real SARA executor
+ * must publish their observed states.
+ */
 export const useAsasfSystem = (hasCriticalErrors: boolean) => {
     const [asasfNodes, setAsasfNodes] = useState<ASASFNodesState>(INITIAL_STATE);
-    const [isRemediating, setIsRemediating] = useState(false);
+    const [isRemediating] = useState(false);
 
     useEffect(() => {
-        if (hasCriticalErrors && !isRemediating) {
-            setIsRemediating(true);
-            const timeouts: ReturnType<typeof setTimeout>[] = [];
-
-            // Sequence of state changes to simulate remediation based on the 5-phase Reverse Equation
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, etr: ASASFStatus.ALERTA })), 500)); // Λ - Alerta
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, etr: ASASFStatus.ANALISANDO, ara: ASASFStatus.ALERTA })), 1500));
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, ara: ASASFStatus.ANALISANDO })), 2500)); // Π - Análise
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, ara: ASASFStatus.NOMINAL, er: ASASFStatus.ALERTA })), 4000));
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, er: ASASFStatus.REMEDIANDO })), 5000)); // Σ - Remediação
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, er: ASASFStatus.NOMINAL, itr: ASASFStatus.REMEDIANDO })), 6500)); // Δ - Refino
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, itr: ASASFStatus.NOMINAL, psi: ASASFStatus.ANALISANDO })), 8000)); // Ψ - Auditoria
-            timeouts.push(setTimeout(() => {
-                setAsasfNodes(INITIAL_STATE);
-                setIsRemediating(false);
-            }, 9500)); // Ciclo completo
-
-            return () => {
-                timeouts.forEach(clearTimeout);
-            };
+        if (hasCriticalErrors) {
+            setAsasfNodes(prev => ({
+                ...prev,
+                etr: ASASFStatus.ALERTA,
+                ara: ASASFStatus.ANALISANDO,
+            }));
+            return;
         }
-    }, [hasCriticalErrors, isRemediating]);
+
+        setAsasfNodes(INITIAL_STATE);
+    }, [hasCriticalErrors]);
 
     return { asasfNodes, isRemediating };
 };
