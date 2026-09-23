@@ -11,10 +11,7 @@ function invoke(body: unknown) {
     status(code: number) { statusCode = code; return this; },
     json(value: unknown) { payload = value; return this; },
   };
-  handler(req, res);
-  return new Promise<{status: number; payload: any}>((resolve) => {
-    queueMicrotask(() => resolve({ status: statusCode, payload }));
-  });
+  return Promise.resolve(handler(req, res)).then(() => ({ status: statusCode, payload }));
 }
 
 test('G2 Octacore wrapper executes the canonical Mesh ping kernel', async () => {
