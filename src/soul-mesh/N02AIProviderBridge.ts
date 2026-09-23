@@ -32,8 +32,8 @@ function normalizeCapabilities(payload: MeshPayload) {
   return (payload.deployedCapabilities ?? []).map(capability => ({
     id: capability.id,
     name: capability.name ?? capability.id,
-    status: capability.status ?? 'Estável',
-    metric: capability.metric ?? 100,
+    ...(capability.status ? { status: capability.status } : {}),
+    ...(typeof capability.metric === 'number' ? { metric: capability.metric } : {}),
   }));
 }
 

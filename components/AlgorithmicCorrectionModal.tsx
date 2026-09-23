@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
     BoltIcon,
     BrainChipIcon,
@@ -38,36 +38,12 @@ const ModuleNode: React.FC<{
     );
 };
 
-const AnimatedMetric: React.FC<{ start: number; end: number; duration: number; suffix?: string; prefix?: string;}> = ({ start, end, duration, suffix = '', prefix = '' }) => {
-    const [current, setCurrent] = useState(start);
-
-    useEffect(() => {
-        let startTime: number;
-        const animate = (time: number) => {
-            if (!startTime) startTime = time;
-            const progress = Math.min((time - startTime) / duration, 1);
-            const value = start + progress * (end - start);
-            setCurrent(value);
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            }
-        };
-        const handle = requestAnimationFrame(animate);
-        return () => cancelAnimationFrame(handle);
-    }, [start, end, duration]);
-
-    return <span className="font-mono-code">{prefix}{current.toFixed(0)}{suffix}</span>;
-};
 
 const AlgorithmicCorrectionModal: React.FC<AlgorithmicCorrectionModalProps> = ({ isOpen, onClose, operation }) => {
     const phase = operation ? Math.floor(operation.progress / (operation.totalSteps / 5)) : 0;
     const isComplete = operation?.status === 'DONE';
     
-    useEffect(() => {
-        if (isComplete) {
-            setTimeout(onClose, 5000);
-        }
-    }, [isComplete, onClose]);
+
 
     const getModuleStatus = (phaseNumber: number) => {
         if (phase < phaseNumber) return "Inativo";
@@ -92,6 +68,19 @@ const AlgorithmicCorrectionModal: React.FC<AlgorithmicCorrectionModalProps> = ({
 
     if (!isOpen) return null;
 
+    const waitingForRuntime = !operation || operation.status === 'WAITING_RUNTIME';
+    if (waitingForRuntime) {
+        return (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 max-w-lg w-full text-center">
+                    <h3 className="text-lg font-bold text-gray-300 mb-3">Operação aguardando executor real</h3>
+                    <p className="text-sm text-gray-400">Nenhuma etapa foi marcada como executada por esta interface.</p>
+                    <button type="button" onClick={onClose} className="mt-5 px-4 py-2 rounded border border-gray-600 text-gray-300 hover:bg-gray-800">Fechar</button>
+                </div>
+            </div>
+        );
+    }
+
     const renderContent = () => {
         if (!isComplete) {
             return (
@@ -112,27 +101,27 @@ const AlgorithmicCorrectionModal: React.FC<AlgorithmicCorrectionModalProps> = ({
         
         return (
             <div className="text-center w-full max-w-lg">
-                <h3 className="text-xl font-bold text-green-300 mb-4">Auto-Correção Concluída</h3>
+                <h3 className="text-xl font-bold text-green-300 mb-4">Executor relatou conclusão</h3>
                  <div className="grid grid-cols-2 gap-4 text-left p-4 bg-gray-800 rounded-lg">
                     <div className="flex items-center space-x-2">
                         <ArrowsPathIcon className="w-5 h-5 text-green-400"/>
                         <div>
                             <p className="text-gray-300 text-sm">Eficiência Algorítmica</p>
-                            <p className="text-white font-bold"><AnimatedMetric start={0} end={32} duration={1500} prefix="+" suffix="%"/> </p>
+                            <p className="text-white font-bold">N/O</p>
                         </div>
                     </div>
                      <div className="flex items-center space-x-2">
                         <ScaleIcon className="w-5 h-5 text-green-400"/>
                         <div>
                             <p className="text-gray-300 text-sm">Adaptabilidade</p>
-                            <p className="text-white font-bold"><AnimatedMetric start={0} end={18} duration={1500} prefix="+" suffix="%"/> </p>
+                            <p className="text-white font-bold">N/O</p>
                         </div>
                     </div>
                      <div className="flex items-center space-x-2">
                         <ArrowsPathIcon className="w-5 h-5 text-green-400"/>
                         <div>
                             <p className="text-gray-300 text-sm">Redução de Latência</p>
-                            <p className="text-white font-bold"><AnimatedMetric start={0} end={41} duration={1500} prefix="-" suffix="ms"/> </p>
+                            <p className="text-white font-bold">N/O</p>
                         </div>
                     </div>
                     <div className="flex items-center space-x-2 col-span-2">
