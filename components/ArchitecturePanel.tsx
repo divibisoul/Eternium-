@@ -100,7 +100,7 @@ export const ArchitecturePanel: React.FC<ArchitecturePanelProps> = ({
                 <footer className="p-3 border-t border-cyan-400/20 flex-shrink-0 bg-purple-900/30">
                     <div className="flex items-center justify-center text-purple-300 animate-pulse">
                         <BoltIcon className="w-5 h-5 mr-2" />
-                        <span className="font-bold text-sm">OMNIMODE ATIVO: Overclock 240%</span>
+                        <span className="font-bold text-sm">OMNIMODE ATIVO: estado configurado localmente</span>
                     </div>
                 </footer>
             )}
