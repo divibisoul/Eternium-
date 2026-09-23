@@ -144,9 +144,6 @@ export default async function handler(req:any,res:any) {
   if (m.kind !== 'request') return res.status(202).json({ accepted:true, correlationId:m.correlationId, source:NUCLEUS_ID, target:m.source, contractVersion:SOUL_MESH_CONTRACT_VERSION });
   if (!acceptOnce(m.id)) return res.status(409).json({ error:'REPLAY_DETECTED', correlationId:m.correlationId });
 
-  if (m.kind !== 'request') return res.status(202).json({ accepted:true, correlationId:m.correlationId, source:NUCLEUS_ID, target:m.source, contractVersion:SOUL_MESH_CONTRACT_VERSION });
-  if (!acceptOnce(m.id)) return res.status(409).json({ error:'REPLAY_DETECTED', correlationId:m.correlationId });
-
   if (m.capability === OCTACORE_CAPABILITY) {
     if (!m.payload || typeof m.payload !== 'object' || Array.isArray(m.payload)) {
       const out = envelope(m, 'error', { code: 'OCTACORE_N02_PAYLOAD_MUST_BE_OBJECT' }, 400);
