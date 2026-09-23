@@ -7,6 +7,17 @@ const NUCLEUS_ID = 'N02' as const;
 const NUCLEI = new Set(['N01', 'N02', 'N03', 'N04', 'N05', 'N06', 'N07']);
 const PEERS = ['N01', 'N03', 'N04', 'N05', 'N06', 'N07'] as const;
 const OCTACORE_CAPABILITY = 'octacore.execute';
+const declaredCapabilities = () => [
+  ...SOUL_MESH_CAPABILITIES.map(c => c.id),
+  OCTACORE_CAPABILITY,
+  'sara.health',
+  'sara.cycle',
+  'sara.audit',
+  'sara.regenerate',
+  'sara.state',
+  'sara.capabilities',
+  'sara.trace',
+];
 const MAX_BODY_BYTES = 1_000_000;
 const MAX_CLOCK_SKEW_MS = 30_000;
 const REPLAY_WINDOW_MS = 5 * 60_000;
@@ -133,43 +144,6 @@ export default async function handler(req:any,res:any) {
   if (m.kind !== 'request') return res.status(202).json({ accepted:true, correlationId:m.correlationId, source:NUCLEUS_ID, target:m.source, contractVersion:SOUL_MESH_CONTRACT_VERSION });
   if (!acceptOnce(m.id)) return res.status(409).json({ error:'REPLAY_DETECTED', correlationId:m.correlationId });
 
-  if (m.capability === 'octacore.execute') {
-    if (!m.payload || typeof m.payload !== 'object' || Array.isArray(m.payload)) {
-      const out = envelope(m, 'error', { code: 'OCTACORE_N02_PAYLOAD_MUST_BE_OBJECT' }, 400);
-      return res.status(out.status).json(out.body);
-    }
-    const octa = m.payload as { capability?: unknown; payload?: unknown; job_id?: unknown };
-    const innerCapability = typeof octa.capability === 'string' ? octa.capability.trim() : '';
-    if (!innerCapability) {
-      const out = envelope(m, 'error', { code: 'OCTACORE_N02_CAPABILITY_REQUIRED' }, 400);
-      return res.status(out.status).json(out.body);
-    }
-    if (!n02CapabilityRuntime.has(innerCapability)) {
-      const out = envelope(m, 'error', { code: 'OCTACORE_N02_CAPABILITY_NOT_EXECUTABLE', capability: innerCapability }, 501);
-      return res.status(out.status).json(out.body);
-    }
-    try {
-      const nested = { ...m, capability: innerCapability, payload: octa.payload };
-      const value = await executeN02Agent(nested);
-      const out = envelope(m, 'response', {
-        ok: true,
-        kernel: 'G2',
-        nucleus: NUCLEUS_ID,
-        capability: innerCapability,
-        job_id: typeof octa.job_id === 'string' ? octa.job_id : undefined,
-        value,
-      });
-      return res.status(out.status).json(out.body);
-    } catch (error) {
-      const out = envelope(m, 'error', {
-        code: 'OCTACORE_N02_EXECUTION_ERROR',
-        capability: innerCapability,
-        detail: error instanceof Error ? error.message : String(error),
-      }, 502);
-      return res.status(out.status).json(out.body);
-    }
-  }
-
   if (m.capability === OCTACORE_CAPABILITY) {
     if (!m.payload || typeof m.payload !== 'object' || Array.isArray(m.payload)) {
       const out = envelope(m, 'error', { code: 'OCTACORE_N02_PAYLOAD_MUST_BE_OBJECT' }, 400);
@@ -210,7 +184,7 @@ export default async function handler(req:any,res:any) {
   if (m.capability === 'mesh.handshake') {
     const out = envelope(m, 'response', {
       nucleus: NUCLEUS_ID, protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION,
-      status:'online', capabilities:[...SOUL_MESH_CAPABILITIES.map(c => c.id),'sara.health','sara.cycle','sara.audit','sara.regenerate','sara.state','sara.capabilities','sara.trace'], transports:['http','supabase-realtime']
+      status:'online', capabilities:declaredCapabilities(), transports:['http','supabase-realtime']
     });
     return res.status(out.status).json(out.body);
   }
@@ -221,7 +195,7 @@ export default async function handler(req:any,res:any) {
   if (m.capability === 'mesh.describe') {
     const out = envelope(m, 'response', {
       nucleus: NUCLEUS_ID, peers:[...PEERS], protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, status:'online',
-      declaredCapabilities:SOUL_MESH_CAPABILITIES.map(c => c.id),
+      declaredCapabilities:declaredCapabilities(),
       executableCapabilities:n02CapabilityRuntime.listExecutable(),
       agents:n02AgentRegistry.list().map(agent => ({ id:agent.id, capabilities:agent.capabilities })),
       transports:['http','supabase-realtime'],
