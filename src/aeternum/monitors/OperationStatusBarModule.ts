@@ -16,6 +16,33 @@ export type OperationProjectionPublisher = (
   payload: OperationDisplayProjection,
 ) => void | Promise<void>;
 
+export function projectOperation(
+  operation: ActiveOperation,
+): OperationDisplayProjection {
+  const progress =
+    Number.isFinite(operation.progress) ? Number(operation.progress) : null;
+  const totalSteps =
+    Number.isFinite(operation.totalSteps) && operation.totalSteps > 0
+      ? Number(operation.totalSteps)
+      : null;
+
+  const progressPercent =
+    progress !== null && totalSteps !== null
+      ? Math.min(100, Math.max(0, (progress / totalSteps) * 100))
+      : null;
+
+  return {
+    id: operation.id,
+    type: operation.type,
+    status: operation.status,
+    message: operation.message,
+    progressPercent,
+    progressObserved: progressPercent !== null,
+    totalSteps,
+    progress,
+  };
+}
+
 export class OperationStatusBarModule {
   readonly id = "L5.OperationStatusBarModule";
   private active = false;
@@ -39,29 +66,7 @@ export class OperationStatusBarModule {
 
   project(operation: ActiveOperation): OperationDisplayProjection | null {
     if (!this.active) return null;
-
-    const progress =
-      Number.isFinite(operation.progress) ? Number(operation.progress) : null;
-    const totalSteps =
-      Number.isFinite(operation.totalSteps) && operation.totalSteps > 0
-        ? Number(operation.totalSteps)
-        : null;
-
-    const progressPercent =
-      progress !== null && totalSteps !== null
-        ? Math.min(100, Math.max(0, (progress / totalSteps) * 100))
-        : null;
-
-    return {
-      id: operation.id,
-      type: operation.type,
-      status: operation.status,
-      message: operation.message,
-      progressPercent,
-      progressObserved: progressPercent !== null,
-      totalSteps,
-      progress,
-    };
+    return projectOperation(operation);
   }
 
   async publish(operation: ActiveOperation): Promise<OperationDisplayProjection | null> {
