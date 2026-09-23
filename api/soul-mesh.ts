@@ -140,7 +140,7 @@ const envelope = (m: MeshMessage, kind: 'response'|'error', payload: unknown, st
     type,
     payload: { capability: m.capability ?? '', payload },
   };
-  const secret = SARA_TOKEN || String(process.env.SOUL_MESH_HMAC_SECRET || '').trim();
+  const secret = String(process.env.SOUL_MESH_HMAC_SECRET || '').trim();
   const hmac = secret ? createHmac('sha256', secret).update(JSON.stringify(legacy), 'utf8').digest('hex') : '';
   return {
     status,
