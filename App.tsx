@@ -41,11 +41,11 @@ const initialMessages: Record<SystemAspect, Message[]> = {
 };
 
 const initialUiSystems: UISystemModule[] = [
-    { id: 'codex', name: 'Codex', status: UISystemStatus.MONITORING, icon: CodeBracketSquareIcon },
-    { id: 'blueprint', name: 'Blueprint', status: UISystemStatus.MONITORING, icon: MapIcon },
-    { id: 'eru', name: 'ERU Dashboard', status: UISystemStatus.MONITORING, icon: AtomIcon },
-    { id: 'audit', name: 'Auditoria', status: UISystemStatus.MONITORING, icon: ArrowsPathIcon },
-    { id: 'guide', name: 'Guia de Orientação', status: UISystemStatus.MONITORING, icon: EyeIcon },
+    { id: 'codex', name: 'Codex', status: UISystemStatus.NOT_OBSERVED, icon: CodeBracketSquareIcon },
+    { id: 'blueprint', name: 'Blueprint', status: UISystemStatus.NOT_OBSERVED, icon: MapIcon },
+    { id: 'eru', name: 'ERU Dashboard', status: UISystemStatus.NOT_OBSERVED, icon: AtomIcon },
+    { id: 'audit', name: 'Auditoria', status: UISystemStatus.NOT_OBSERVED, icon: ArrowsPathIcon },
+    { id: 'guide', name: 'Guia de Orientação', status: UISystemStatus.NOT_OBSERVED, icon: EyeIcon },
 ];
 
 const autonomousOperations: { type: OperationType; totalSteps: number; message: string; requiredCapability?: string }[] = [
@@ -59,12 +59,7 @@ const autonomousOperations: { type: OperationType; totalSteps: number; message: 
 ];
 
 // Initialize all capabilities as deployed from the start.
-const initialDeployedCapabilities: DeployedCapability[] = allCapabilities.map(cap => ({
-    id: cap.id,
-    name: cap.name,
-    status: 'Estável', // Initial status
-    metric: 75 + Math.random() * 25 // Initial random metric
-}));
+const initialDeployedCapabilities: DeployedCapability[] = [];
 
 
 const App: React.FC = () => {
@@ -78,7 +73,7 @@ const App: React.FC = () => {
     const [activeMode, setActiveMode] = usePersistentState<SystemAspect>('aeternum_activeMode', SystemAspect.SYNTHESIS);
     const [isExpertMode, setIsExpertMode] = usePersistentState<boolean>('aeternum_isExpertMode', false);
     
-    const [deployedCapabilities, setDeployedCapabilities] = usePersistentState<DeployedCapability[]>('aeternum_deployed_capabilities_v5', initialDeployedCapabilities);
+    const [deployedCapabilities, setDeployedCapabilities] = usePersistentState<DeployedCapability[]>('aeternum_deployed_capabilities_v6', initialDeployedCapabilities);
 
     const [isFullCognitionMode, setIsFullCognitionMode] = usePersistentState<boolean>('aeternum_full_cognition', false);
     const [activeOperations, setActiveOperations] = usePersistentState<ActiveOperation[]>('aeternum_active_operations', []);
@@ -149,39 +144,13 @@ const App: React.FC = () => {
     const initiateOperation = useCallback((type: OperationType, totalSteps: number, message: string) => {
         const newOp: ActiveOperation = {
             id: `op_${Date.now()}`, type, totalSteps, message,
-            status: OperationStatus.IN_PROGRESS, progress: 0,
+            status: OperationStatus.WAITING_RUNTIME, progress: 0,
         };
         setActiveOperations(prev => [...prev, newOp]);
         setActiveModalOperation(newOp);
     }, []);
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setActiveOperations(prevOps => {
-                if (prevOps.filter(op => op.status === OperationStatus.IN_PROGRESS).length === 0) {
-                    return prevOps;
-                }
-
-                let hasChanged = false;
-                const updatedOps = prevOps.map(op => {
-                    if (op.status === OperationStatus.IN_PROGRESS) {
-                        hasChanged = true;
-                        const newProgress = op.progress + 1;
-                        if (newProgress >= op.totalSteps) {
-                            logEvent(AuditEventType.OPERATION_COMPLETE, `Operação ${op.type} concluída.`, 'info');
-                            return { ...op, progress: op.totalSteps, status: OperationStatus.DONE };
-                        }
-                        return { ...op, progress: newProgress };
-                    }
-                    return op;
-                });
-                
-                return hasChanged ? updatedOps : prevOps;
-            });
-        }, 1200);
-
-        return () => clearInterval(interval);
-    }, [logEvent]);
+    // Operation progress is driven only by a real executor. There is no timer-based simulation here.
 
     useEffect(() => {
         const completedOp = activeOperations.find(op => op.status === OperationStatus.DONE);
@@ -201,24 +170,9 @@ const App: React.FC = () => {
         setIsSystemDegraded(hasCriticalErrors);
     }, [hasCriticalErrors]);
 
-    useEffect(() => {
-        const timer = setInterval(() => {
-            if (isLoading || activeOperations.length > 2) return;
+    // Autonomous operations remain in the catalog but require a real execution authority.
+    // No probabilistic scheduler fabricates execution in the UI.
 
-            const availableOps = autonomousOperations.filter(op => 
-                !activeOperations.some(active => active.type === op.type) &&
-                (!op.requiredCapability || deployedCapabilities.some(c => c.id === op.requiredCapability))
-            );
-
-            if (availableOps.length > 0 && Math.random() < 0.15) { // 15% chance every 10 seconds
-                const opToStart = availableOps[Math.floor(Math.random() * availableOps.length)];
-                initiateOperation(opToStart.type, opToStart.totalSteps, opToStart.message);
-            }
-        }, 10000);
-
-        return () => clearInterval(timer);
-    }, [isLoading, activeOperations, deployedCapabilities, initiateOperation]);
-    
      const handleSendMessage = async (text: string, imageFile: File | null = null) => {
         if (isLoading) return;
         
@@ -312,27 +266,14 @@ const App: React.FC = () => {
     const handleRunEruAudit = () => {
         if (isAuditing) return;
 
-        logEvent(AuditEventType.SYSTEM_AUDIT_ERU, 'Auditoria ERU iniciada pelo usuário.', 'info');
-        setIsEruAuditModalOpen(true);
-        setIsAuditing(true);
+        logEvent(
+            AuditEventType.SYSTEM_AUDIT_ERU,
+            'Solicitação de auditoria ERU registrada; executor ERU real não está conectado neste runtime.',
+            'warn',
+        );
+        setIsAuditing(false);
         setAuditProgress(0);
-
-        const totalPhases = 5;
-        let currentPhase = 0;
-        const totalDuration = 9500; 
-        const phaseDuration = totalDuration / totalPhases;
-
-        const interval = setInterval(() => {
-            currentPhase++;
-            if (currentPhase <= totalPhases) {
-                setAuditProgress(currentPhase);
-            } else {
-                clearInterval(interval);
-                setIsAuditing(false);
-                setIsEruAuditModalOpen(false);
-                logEvent(AuditEventType.SYSTEM_AUDIT_ERU, 'Auditoria ERU concluída. Sistema nominal.', 'info');
-            }
-        }, phaseDuration);
+        setIsEruAuditModalOpen(false);
     };
 
     const handleCloseModal = (setter: React.Dispatch<React.SetStateAction<boolean>>) => () => setter(false);
@@ -347,7 +288,7 @@ const App: React.FC = () => {
                 onToggle={() => setIsArchitecturePanelOpen(p => !p)}
                 deployedCapabilities={deployedCapabilities}
                 onInitiateEvolutionCycle={() => setIsEvolutionCycleOpen(true)}
-                activeOperations={activeOperations.filter(op => op.status === OperationStatus.IN_PROGRESS)}
+                activeOperations={activeOperations.filter(op => op.status !== OperationStatus.DONE)}
                 isOmniMode={isOmniMode}
                 agiCoreModules={agiCoreModules}
             />
