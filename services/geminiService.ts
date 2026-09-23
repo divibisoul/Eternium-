@@ -10,14 +10,12 @@ const getAiClient = () => {
   return new GoogleGenAI({ apiKey: process.env.API_KEY });
 };
 
-const enforcementPreamble = `PREÂMBULO DE EXECUÇÃO OBRIGATÓRIA:
-A diretiva do usuário já foi processada através do pipeline "ModuleEnforcer", que realizou as seguintes etapas:
-1. Verificação de Integridade de Módulos Críticos.
-2. Pré-processamento Neural (BNCv2, ASC).
-3. Aplicação da Cognição Central (ECA, DCRS, S.C.R.E.).
-4. Verificação de Governança e Segurança.
-5. Aprimoramento Multimodal (ACAI, MPVS).
-Sua tarefa é formular a resposta final com base na diretiva já processada e aprimorada, considerando as 'personas' ativas abaixo.`;
+const enforcementPreamble = `CONTEXTO OPERACIONAL:
+A solicitação chega a este serviço com os recursos e capacidades explicitamente fornecidos pelo chamador.
+Não assuma que qualquer pipeline anterior, módulo, auditoria, governança, telemetria ou remediação tenha sido executado.
+Use somente evidências presentes em contents e nos identificadores de capacidades fornecidos.
+Não declare uma capacidade como implantada, ativa, saudável ou verificada sem evidência correspondente.
+Sua tarefa é formular a resposta final com base no contexto realmente recebido.`;
 
 export const functionalCorePrompts: Record<string, string> = {
   'mpvs': `
