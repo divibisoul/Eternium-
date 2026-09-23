@@ -155,6 +155,34 @@ export default async function handler(req:any,res:any) {
       const out = envelope(m, 'error', { code: 'OCTACORE_N02_CAPABILITY_REQUIRED' }, 400);
       return res.status(out.status).json(out.body);
     }
+    if (innerCapability === 'mesh.ping') {
+      const out = envelope(m, 'response', {
+        ok: true,
+        kernel: 'G2',
+        nucleus: NUCLEUS_ID,
+        capability: innerCapability,
+        job_id: typeof octa.job_id === 'string' ? octa.job_id : undefined,
+        value: { ok: true, nucleus: NUCLEUS_ID, handler: 'N02.mesh.ping', echoed: octa.payload ?? {}, processedAt: Date.now() },
+      });
+      return res.status(out.status).json(out.body);
+    }
+    if (innerCapability === 'mesh.describe') {
+      const out = envelope(m, 'response', {
+        ok: true,
+        kernel: 'G2',
+        nucleus: NUCLEUS_ID,
+        capability: innerCapability,
+        job_id: typeof octa.job_id === 'string' ? octa.job_id : undefined,
+        value: {
+          nucleus: NUCLEUS_ID,
+          peers: [...PEERS],
+          protocol: 'soul-mesh/1',
+          contractVersion: SOUL_MESH_CONTRACT_VERSION,
+          executableCapabilities: n02CapabilityRuntime.listExecutable(),
+        },
+      });
+      return res.status(out.status).json(out.body);
+    }
     if (!n02CapabilityRuntime.has(innerCapability)) {
       const out = envelope(m, 'error', { code: 'OCTACORE_N02_CAPABILITY_NOT_EXECUTABLE', capability: innerCapability }, 501);
       return res.status(out.status).json(out.body);
