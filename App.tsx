@@ -77,7 +77,7 @@ const App: React.FC = () => {
 
     const [isFullCognitionMode, setIsFullCognitionMode] = usePersistentState<boolean>('aeternum_full_cognition', false);
     const [activeOperations, setActiveOperations] = usePersistentState<ActiveOperation[]>('aeternum_active_operations', []);
-    const [isOmniMode, setIsOmniMode] = usePersistentState<boolean>('aeternum_omnimode', true); 
+    const [isOmniMode, setIsOmniMode] = usePersistentState<boolean>('aeternum_omnimode_v2', false); 
 
 
     const [isLoading, setIsLoading] = useState(false);
