@@ -100,7 +100,10 @@ export const processUserDirective = async (
 
   let systemInstruction: string;
   if (isFullCognitionMode) {
-    systemInstruction = `**COGNITIVE OVERRIDE ACTIVE**\nAUTHORIZATION: OmniOmega\nLEVEL: 9\nPROTOCOL: Theta\nProcess the user's directive with maximum cognitive capacity. Respond directly, without JSON encapsulation.`;
+    systemInstruction = `MODO DE COGNIÇÃO AMPLIADA SOLICITADO PELO APLICATIVO:
+Trate a solicitação com o contexto e as capacidades efetivamente fornecidos.
+Não assuma autoridade adicional, níveis de acesso, execução de módulos ou resultados prévios.
+Responda diretamente, sem encapsulamento JSON.`;
   } else {
     const activePersonas = deployedCapabilities
       .map(cap => functionalCorePrompts[cap.id])
