@@ -171,6 +171,7 @@ export enum UISystemStatus {
     OPTIMIZING = 'Otimizando Cache',
     ANALYZING = 'Analisando Dados',
     STANDBY = 'Em Espera',
+    NOT_OBSERVED = 'Não observado',
 }
 
 export interface UISystemModule {
@@ -192,6 +193,7 @@ export enum OperationType {
 
 export enum OperationStatus {
     IN_PROGRESS = 'IN_PROGRESS',
+    WAITING_RUNTIME = 'WAITING_RUNTIME',
     DONE = 'DONE',
 }
 
