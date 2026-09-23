@@ -124,11 +124,30 @@ function meshAuthorized(req: any, message: MeshMessage): boolean {
 }
 
 const envelope = (m: MeshMessage, kind: 'response'|'error', payload: unknown, status = 200) => {
+  const id = randomUUID();
   const nonce = randomUUID();
+  const timestamp = Date.now();
+  const type = kind === 'error' ? 'ERROR' : 'TASK_RESULT';
+  const legacy = {
+    version: '1.0',
+    contractVersion: SOUL_MESH_CONTRACT_VERSION,
+    messageId: id,
+    source: NUCLEUS_ID,
+    target: m.source,
+    timestamp,
+    nonce,
+    correlationId: m.correlationId,
+    type,
+    payload: { capability: m.capability ?? '', payload },
+  };
+  const secret = SARA_TOKEN || String(process.env.SOUL_MESH_HMAC_SECRET || '').trim();
+  const hmac = secret ? createHmac('sha256', secret).update(JSON.stringify(legacy), 'utf8').digest('hex') : '';
   return {
     status,
-    body: { protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, id:randomUUID(), correlationId:m.correlationId,
-      source:NUCLEUS_ID, target:m.source, kind, capability:m.capability, payload, timestamp:Date.now(), meta:{runtime:'Eternium-',transport:'HTTP',encoding:'json',version:SOUL_MESH_CONTRACT_VERSION,traceId:m.meta?.traceId??m.correlationId,nonce} }
+    body: { protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, id, correlationId:m.correlationId,
+      source:NUCLEUS_ID, target:m.source, kind, capability:m.capability, payload, timestamp,
+      nonce, ...(hmac ? {hmac} : {}),
+      meta:{runtime:'Eternium-',transport:'HTTP',encoding:'json',version:SOUL_MESH_CONTRACT_VERSION,traceId:m.meta?.traceId??m.correlationId,nonce} }
   };
 };
 
