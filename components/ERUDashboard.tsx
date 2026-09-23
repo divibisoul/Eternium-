@@ -19,6 +19,7 @@ const MetricCard: React.FC<{ title: string; value: string; icon: React.ReactNode
 
 const ERUDashboard: React.FC<ERUDashboardProps> = ({ isOpen, onClose }) => {
     const { metrics, coreParams, strategy } = useReverseEquation();
+    const displayMetric = (value: number | null, digits: number, suffix = '') => value === null ? 'N/O' : value.toFixed(digits) + suffix;
 
     if (!isOpen) return null;
 
@@ -59,10 +60,10 @@ const ERUDashboard: React.FC<ERUDashboardProps> = ({ isOpen, onClose }) => {
                          {/* Reality Guardian */}
                         <div className="space-y-4">
                             <h3 className="font-semibold text-purple-300 text-lg flex items-center"><ArrowsPathIcon className="w-5 h-5 mr-2"/>Métricas do Reality Guardian (Φ)</h3>
-                            <MetricCard title="Latência Média" value={`${metrics.latency.toFixed(0)} ms`} icon={<ClockIcon className="w-6 h-6"/>} />
-                            <MetricCard title="Carga de CPU" value={`${metrics.cpuLoad.toFixed(1)} %`} icon={<CpuChipIcon className="w-6 h-6"/>} />
-                            <MetricCard title="Uso de Memória" value={`${metrics.memoryUsage.toFixed(2)} GB`} icon={<ServerStackIcon className="w-6 h-6"/>} />
-                            <MetricCard title="Score Ético" value={`${(metrics.ethicalScore * 100).toFixed(2)} %`} icon={<ShieldCheckIcon className="w-6 h-6"/>} />
+                            <MetricCard title="Latência Média" value={displayMetric(metrics.latency, 0, " ms")} icon={<ClockIcon className="w-6 h-6"/>} />
+                            <MetricCard title="Carga de CPU" value={displayMetric(metrics.cpuLoad, 1, " %")} icon={<CpuChipIcon className="w-6 h-6"/>} />
+                            <MetricCard title="Uso de Memória" value={displayMetric(metrics.memoryUsage, 2, " GB")} icon={<ServerStackIcon className="w-6 h-6"/>} />
+                            <MetricCard title="Score Ético" value={metrics.ethicalScore === null ? "N/O" : `${(metrics.ethicalScore * 100).toFixed(2)} %`} icon={<ShieldCheckIcon className="w-6 h-6"/>} />
                         </div>
 
                          {/* Noetic Core */}
