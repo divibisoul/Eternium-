@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Capability, DeployedCapability } from '../types.ts';
 
@@ -7,15 +6,18 @@ interface CapabilityCardProps {
     deployedInfo?: DeployedCapability;
 }
 
-const statusColorMap = {
+const statusColorMap: Record<NonNullable<DeployedCapability['status']>, string> = {
     Processando: 'text-yellow-400',
     Otimizando: 'text-blue-400',
     Monitorando: 'text-purple-400',
-    Estável: 'text-green-400'
+    Estável: 'text-green-400',
+    'Não observado': 'text-gray-400'
 };
 
 export const CapabilityCard: React.FC<CapabilityCardProps> = ({ capability, deployedInfo }) => {
     const isDeployed = !!deployedInfo;
+    const status = deployedInfo?.status ?? 'Não observado';
+    const metric = deployedInfo?.metric;
 
     return (
         <div className={`bg-gray-800/60 p-3 rounded-lg border transition-all duration-300 ${isDeployed ? 'border-green-500/50' : 'border-gray-700'}`}>
@@ -29,12 +31,14 @@ export const CapabilityCard: React.FC<CapabilityCardProps> = ({ capability, depl
 
             {isDeployed && (
                 <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-700/50 text-xs">
-                     <div className="flex items-center space-x-2">
-                        <div className={`w-2 h-2 rounded-full ${statusColorMap[deployedInfo.status].replace('text-', 'bg-')} animate-pulse`}></div>
-                        <span className={statusColorMap[deployedInfo.status]}>{deployedInfo.status}</span>
+                    <div className="flex items-center space-x-2">
+                        <div className={`w-2 h-2 rounded-full ${statusColorMap[status].replace('text-', 'bg-')} ${status === 'Processando' || status === 'Otimizando' ? 'animate-pulse' : ''}`}></div>
+                        <span className={statusColorMap[status]}>{status}</span>
                     </div>
-                    <div className="font-mono-code text-gray-300" title={`${capability.metricName}`}>
-                       {deployedInfo.metric.toFixed(1)} <span className="text-gray-500">{capability.metricUnit}</span>
+                    <div className="font-mono-code text-gray-300" title={capability.metricName}>
+                        {typeof metric === 'number'
+                            ? metric.toFixed(1)
+                            : 'N/O'} <span className="text-gray-500">{capability.metricUnit}</span>
                     </div>
                 </div>
             )}
