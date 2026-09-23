@@ -1,5 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ArrowsPathIcon, ShieldCheckIcon, ClockIcon, CpuChipIcon } from './icons.tsx';
+
+interface DIASObservations {
+    latency: number | null;
+    cpu: number | null;
+    ethicalScore: number | null;
+}
+
+interface DIASPerformanceMonitorProps {
+    observations?: Partial<DIASObservations>;
+    strategy?: string | null;
+}
 
 const MetricDisplay: React.FC<{ label: string; value: string; icon: React.ReactNode; }> = ({ label, value, icon }) => (
     <div className="flex justify-between items-center text-sm">
@@ -11,44 +22,9 @@ const MetricDisplay: React.FC<{ label: string; value: string; icon: React.ReactN
     </div>
 );
 
-const strategies = [
-    { text: 'Otimizando para Velocidade', color: 'text-yellow-400' },
-    { text: 'Adaptando para Eficiência', color: 'text-blue-400' },
-    { text: 'Refinando para Qualidade', color: 'text-purple-400' },
-    { text: 'Mantendo Estado Nominal', color: 'text-green-400' },
-];
-
-const DIASPerformanceMonitor: React.FC = () => {
-    const [metrics, setMetrics] = useState({
-        latency: 180 + Math.random() * 50,
-        cpu: 60 + Math.random() * 15,
-        ethicalScore: 99.5 + Math.random() * 0.5,
-    });
-    const [strategyIndex, setStrategyIndex] = useState(3);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setMetrics({
-                latency: Math.max(50, 180 + (Math.random() - 0.5) * 150),
-                cpu: Math.max(20, 60 + (Math.random() - 0.5) * 50),
-                ethicalScore: Math.min(100, 99.5 + (Math.random() - 0.4) * 0.5),
-            });
-            setStrategyIndex(Math.floor(Math.random() * strategies.length));
-        }, 3000);
-        return () => clearInterval(interval);
-    }, []);
-    
-    const currentStrategy = strategies[strategyIndex];
-
+const DIASPerformanceMonitor: React.FC<DIASPerformanceMonitorProps> = ({ observations = {}, strategy = null }) => {
     return (
-        <div className="bg-gray-800/80 p-4 rounded-lg border border-orange-500/30 mb-4 animate-fade-in">
-             <style>{`
-                @keyframes fade-in {
-                    from { opacity: 0; transform: translateY(-10px); }
-                    to { opacity: 1; transform: translateY(0); }
-                }
-                .animate-fade-in { animation: fade-in 0.5s ease-out forwards; }
-            `}</style>
+        <div className="bg-gray-800/80 p-4 rounded-lg border border-orange-500/30 mb-4">
             <div className="flex items-center mb-3">
                 <ArrowsPathIcon className="w-8 h-8 text-orange-400 mr-3"/>
                 <div>
@@ -57,13 +33,13 @@ const DIASPerformanceMonitor: React.FC = () => {
                 </div>
             </div>
             <div className="space-y-3">
-                <MetricDisplay label="Latência Média" value={`${metrics.latency.toFixed(0)}ms`} icon={<ClockIcon className="w-4 h-4"/>} />
-                <MetricDisplay label="Carga de CPU" value={`${metrics.cpu.toFixed(1)}%`} icon={<CpuChipIcon className="w-4 h-4"/>} />
-                <MetricDisplay label="Score Ético" value={`${metrics.ethicalScore.toFixed(2)}%`} icon={<ShieldCheckIcon className="w-4 h-4"/>} />
+                <MetricDisplay label="Latência Média" value={observations.latency === undefined || observations.latency === null ? 'N/O' : observations.latency.toFixed(0) + 'ms'} icon={<ClockIcon className="w-4 h-4"/>} />
+                <MetricDisplay label="Carga de CPU" value={observations.cpu === undefined || observations.cpu === null ? 'N/O' : observations.cpu.toFixed(1) + '%'} icon={<CpuChipIcon className="w-4 h-4"/>} />
+                <MetricDisplay label="Score Ético" value={observations.ethicalScore === undefined || observations.ethicalScore === null ? 'N/O' : observations.ethicalScore.toFixed(2) + '%'} icon={<ShieldCheckIcon className="w-4 h-4"/>} />
                 <div className="pt-2 border-t border-gray-700/50">
                     <div className="flex justify-between items-center text-sm">
                         <span className="text-gray-300">Estratégia Atual:</span>
-                        <span className={`font-semibold ${currentStrategy.color}`}>{currentStrategy.text}</span>
+                        <span className="font-semibold text-gray-400">{strategy ?? 'Aguardando observações reais'}</span>
                     </div>
                 </div>
             </div>
