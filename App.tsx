@@ -58,7 +58,7 @@ const autonomousOperations: { type: OperationType; totalSteps: number; message: 
     { type: OperationType.ALGORITHMIC_CORRECTION, totalSteps: 12, message: 'Ciclo de Auto-Correção autônomo iniciado.' },
 ];
 
-// Initialize all capabilities as deployed from the start.
+// No capability is marked as deployed until the runtime provides explicit evidence.
 const initialDeployedCapabilities: DeployedCapability[] = [];
 
 
