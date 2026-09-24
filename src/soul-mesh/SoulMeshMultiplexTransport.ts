@@ -15,10 +15,16 @@ export class SoulMeshMultiplexTransport implements SoulMeshTransport {
   }
 
   async send(message: SoulMeshMessage): Promise<void> {
-    const results = await Promise.allSettled(this.transports.map(transport => transport.send(message)));
-    if (results.every(result => result.status === 'rejected')) {
-      throw new Error(`Soul Mesh all transports failed: ${results.map(result => String(result.status === 'rejected' ? result.reason : '')).join(' | ')}`);
+    const failures: string[] = [];
+    for (const [index, transport] of this.transports.entries()) {
+      try {
+        await transport.send(message);
+        return;
+      } catch (error) {
+        failures.push(`transport[${index}]:${error instanceof Error ? error.message : String(error)}`);
+      }
     }
+    throw new Error(`Soul Mesh all transports failed: ${failures.join(' | ')}`);
   }
 
   onMessage(handler: (message: SoulMeshMessage) => void | Promise<void>): () => void {

@@ -21,6 +21,10 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: true, owner: 'N02', context: ['request', 'conversation'], tools: []
   },
   {
+    id: 'inference.reason', version: '1.0', description: 'Compatibility adapter from federated reasoning requests to N02 cognitive-processing',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation', 'perception'], tools: []
+  },
+  {
     id: 'ai.generate', version: '1.0', description: 'N02 generative AI capability',
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation'], tools: []
   },

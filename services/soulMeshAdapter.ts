@@ -33,6 +33,14 @@ export interface EterniumTaskResult {
   error?: { code: string; message: string };
 }
 
+
+export type SoulTaskExecutor = (task: EterniumTask) => Promise<unknown> | unknown;
+let soulTaskExecutor: SoulTaskExecutor | null = null;
+
+export function registerSoulTaskExecutor(executor: SoulTaskExecutor | null): void {
+  soulTaskExecutor = executor;
+}
+
 export const ETERNIUM_CAPABILITIES: EterniumCapability[] = [
   'reasoning',
   'planning',
@@ -59,15 +67,19 @@ export async function executeSoulTask(task: EterniumTask): Promise<EterniumTaskR
     return { success: false, error: { code: 'CAPABILITY_UNAVAILABLE', message: task.capability } };
   }
 
-  // Dispatch remains provider-neutral: existing Eternium services perform the
-  // actual cognitive work; this adapter only translates the Soul mesh contract.
-  return {
-    success: true,
-    output: {
-      capability: task.capability,
-      input: task.input,
-      context: task.context,
-      provider: 'eternium',
-    },
-  };
+  if (!soulTaskExecutor) {
+    return { success: false, error: { code: 'EXECUTOR_NOT_CONNECTED', message: `No real executor registered for ${task.capability}` } };
+  }
+  try {
+    const output = await soulTaskExecutor(task);
+    return { success: true, output };
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        code: 'EXECUTION_FAILED',
+        message: error instanceof Error ? error.message : String(error),
+      },
+    };
+  }
 }

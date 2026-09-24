@@ -19,5 +19,7 @@ jobs:
         run: npx tsc -p tsconfig.mesh.json --noEmit
       - name: Gemini reliability tests
         run: node --experimental-strip-types services/geminiReliability.test.ts
+      - name: N02 runtime integrity tests
+        run: node --experimental-strip-types src/soul-mesh/N02RuntimeIntegrity.test.ts
       - name: Build web runtime
         run: npm run build

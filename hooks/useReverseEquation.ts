@@ -1,18 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
-const strategies = [
-    { text: 'Otimizando para Velocidade', color: 'text-yellow-400' },
-    { text: 'Adaptando para Eficiência', color: 'text-blue-400' },
-    { text: 'Refinando para Qualidade', color: 'text-purple-400' },
-    { text: 'Mantendo Estado Nominal', color: 'text-green-400' },
-];
+export type ReverseEquationMetrics = {
+    latency: number;
+    cpuLoad: number;
+    memoryUsage: number;
+    ethicalScore: number;
+    available: boolean;
+};
 
-const useReverseEquation = () => {
-    const [metrics, setMetrics] = useState({
-        latency: 250,
-        cpuLoad: 50,
-        memoryUsage: 3.0,
-        ethicalScore: 0.98,
+export type ReverseEquationMetricsProvider = () => Promise<{
+    latency: number;
+    cpuLoad: number;
+    memoryUsage: number;
+    ethicalScore: number;
+}>;
+
+const nominalStrategy = { text: 'Estado de monitoramento indisponível', color: 'text-muted-foreground' };
+
+const useReverseEquation = (metricsProvider?: ReverseEquationMetricsProvider) => {
+    const [metrics, setMetrics] = useState<ReverseEquationMetrics>({
+        latency: 0,
+        cpuLoad: 0,
+        memoryUsage: 0,
+        ethicalScore: 0,
+        available: false,
     });
 
     const [coreParams, setCoreParams] = useState({
@@ -20,53 +31,46 @@ const useReverseEquation = () => {
         maxInferenceDepth: 5,
     });
 
-    const [strategy, setStrategy] = useState(strategies[3]);
+    const [strategy, setStrategy] = useState(nominalStrategy);
 
     useEffect(() => {
-        const interval = setInterval(() => {
-            // Simulate new metrics from RealityGuardian(Φ)
-            const newLatency = 150 + Math.random() * 450;
-            const newCpuLoad = 30 + Math.random() * 60;
-            const newMemoryUsage = 2.5 + Math.random() * 2.5;
-            const newEthicalScore = 0.95 + Math.random() * 0.05;
-
-            setMetrics({
-                latency: newLatency,
-                cpuLoad: newCpuLoad,
-                memoryUsage: newMemoryUsage,
-                ethicalScore: newEthicalScore,
-            });
-            
-            let newStrategy = strategies[3]; // Default to nominal
-            let newRelevance = coreParams.relevanceThreshold;
-            let newDepth = coreParams.maxInferenceDepth;
-
-            // Simulate AdaptationModule(Δ) logic
-            if (newLatency > 400 && newCpuLoad > 70) {
-                newStrategy = strategies[0]; // Adapt for Speed
-                newRelevance = Math.min(0.85, coreParams.relevanceThreshold + 0.05);
-            } else if (newCpuLoad > 85) {
-                newStrategy = strategies[1]; // Adapt for Efficiency
-                newDepth = Math.max(3, coreParams.maxInferenceDepth - 1);
-            } else if (newEthicalScore > 0.98 && newLatency < 200) {
-                newStrategy = strategies[2]; // Refine for Quality
-                newRelevance = Math.max(0.70, coreParams.relevanceThreshold - 0.01);
-            } else {
-                // Drift back to defaults if nominal
-                if (coreParams.relevanceThreshold > 0.75) newRelevance -= 0.01;
-                if (coreParams.maxInferenceDepth < 5) newDepth += 1;
+        if (!metricsProvider) return;
+        let disposed = false;
+        const refresh = async () => {
+            try {
+                const observed = await metricsProvider();
+                if (disposed) return;
+                setMetrics({ ...observed, available: true });
+                setStrategy(
+                    observed.latency > 400 && observed.cpuLoad > 70
+                        ? { text: 'Otimizando para Velocidade', color: 'text-yellow-400' }
+                        : observed.cpuLoad > 85
+                            ? { text: 'Adaptando para Eficiência', color: 'text-blue-400' }
+                            : observed.ethicalScore > 0.98 && observed.latency < 200
+                                ? { text: 'Refinando para Qualidade', color: 'text-purple-400' }
+                                : { text: 'Estado Nominal Observado', color: 'text-green-400' }
+                );
+                setCoreParams(current => ({
+                    relevanceThreshold: observed.latency > 400 && observed.cpuLoad > 70
+                        ? Math.min(0.85, current.relevanceThreshold + 0.05)
+                        : observed.cpuLoad > 85
+                            ? current.relevanceThreshold
+                            : Math.max(0.70, current.relevanceThreshold),
+                    maxInferenceDepth: observed.cpuLoad > 85
+                        ? Math.max(3, current.maxInferenceDepth - 1)
+                        : Math.min(5, current.maxInferenceDepth + 1),
+                }));
+            } catch {
+                if (!disposed) setMetrics(current => ({ ...current, available: false }));
             }
-            
-            setStrategy(newStrategy);
-            setCoreParams({
-                relevanceThreshold: newRelevance,
-                maxInferenceDepth: newDepth,
-            });
-
-        }, 2500);
-
-        return () => clearInterval(interval);
-    }, [coreParams]);
+        };
+        void refresh();
+        const interval = setInterval(() => { void refresh(); }, 2500);
+        return () => {
+            disposed = true;
+            clearInterval(interval);
+        };
+    }, [metricsProvider]);
 
     return { metrics, coreParams, strategy };
 };

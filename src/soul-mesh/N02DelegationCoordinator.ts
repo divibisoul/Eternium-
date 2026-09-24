@@ -14,7 +14,7 @@ export type DelegationResult = {
   response: unknown;
 };
 
-const PEERS: NucleusId[] = ['N01', 'N03', 'N04', 'N05', 'N06'];
+const PEERS: NucleusId[] = ['N01', 'N03', 'N04', 'N05', 'N06', 'N07'];
 
 /**
  * N02 delegates work through the existing Soul Mesh peer transport.
