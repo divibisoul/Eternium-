@@ -69,15 +69,15 @@ function canonical(m: MeshMessage, nonce: string): string {
   return JSON.stringify({
     protocol: m.protocol, contractVersion: m.contractVersion, id: m.id, correlationId: m.correlationId,
     source: m.source, target: m.target, kind: m.kind, capability: m.capability ?? null,
-    payload: m.payload, timestamp: m.timestamp, meta: m.meta ?? null, nonce,
+    payload: m.payload, timestamp: m.timestamp, transport: m.meta?.transport ?? null, meta: m.meta ?? null, nonce,
   });
 }
 
 function verifyHmac(m: MeshMessage, req: any): boolean {
   const secret = process.env.SOUL_MESH_HMAC_SECRET?.trim();
   if (!secret) return false;
-  const nonce = m.meta?.nonce?.trim();
-  const supplied = String(req.headers['x-soul-mesh-hmac'] ?? '').trim();
+  const nonce = String(req.headers['x-soul-mesh-nonce'] ?? '').trim() || String((m as MeshMessage & { nonce?: unknown }).nonce ?? '').trim();
+  const supplied = String(req.headers['x-soul-mesh-hmac'] ?? '').trim() || String((m as MeshMessage & { hmac?: unknown }).hmac ?? '').trim();
   if (!nonce || nonce.length < 16 || !/^[0-9a-f]{64}$/i.test(supplied)) return false;
   const expected = createHmac('sha256', secret).update(canonical(m, nonce), 'utf8').digest('hex');
   const actual = Buffer.from(supplied, 'hex');
