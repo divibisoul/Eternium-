@@ -6,6 +6,7 @@ import type { SoulMeshCapabilityHandler } from './SoulMeshCapabilityExecutor';
 type MeshPayload = {
   contents?: unknown;
   text?: string;
+  perception?: unknown;
   mode?: string;
   useWebSearch?: boolean;
   deployedCapabilities?: Array<{ id: string; name?: string; status?: 'Processando' | 'Otimizando' | 'Monitorando' | 'Estável'; metric?: number }>;
@@ -24,6 +25,12 @@ function normalizeContents(payload: MeshPayload) {
   if (Array.isArray(payload.contents)) return payload.contents as any[];
   if (typeof payload.text === 'string' && payload.text.trim()) {
     return [{ role: 'user', parts: [{ text: payload.text }] }];
+  }
+  if (payload.perception !== undefined) {
+    const text = typeof payload.perception === 'string'
+      ? payload.perception
+      : JSON.stringify(payload.perception);
+    if (text.trim()) return [{ role: 'user', parts: [{ text }] }];
   }
   throw new Error('AI_CONTENTS_REQUIRED');
 }
@@ -65,5 +72,6 @@ export const createN02AIProviderBridge = (): Record<string, SoulMeshCapabilityHa
     'ai.generate': execute,
     'ai.multimodal': execute,
     'cognitive-processing': execute,
+    'inference.reason': execute,
   };
 };
