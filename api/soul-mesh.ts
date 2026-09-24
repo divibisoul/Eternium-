@@ -111,7 +111,7 @@ async function callSara(capability:string, payload:unknown, correlationId:string
   if(!SARA_URL || (capability!=='sara.health' && !SARA_TOKEN)) throw new Error('SARA_SERVICE_NOT_CONFIGURED');
   const routes:Record<string,string>={
     'sara.health':'/health','sara.cycle':'/v1/cycle','sara.audit':'/v1/audit','sara.regenerate':'/v1/regenerate',
-    'sara.state':'/v1/state','sara.capabilities':'/v1/capabilities','sara.trace': typeof payload==='object' && payload && 'cycle_id' in payload && typeof (payload as {cycle_id?:unknown}).cycle_id==='string' ? '/v1/trace/'+encodeURIComponent((payload as {cycle_id:string}).cycle_id) : '',
+    'sara.state':'/v1/state','sara.capabilities':'/v1/capabilities','sara.hortacore.assess':'/v1/hortacore/assess','sara.trace': typeof payload==='object' && payload && 'cycle_id' in payload && typeof (payload as {cycle_id?:unknown}).cycle_id==='string' ? '/v1/trace/'+encodeURIComponent((payload as {cycle_id:string}).cycle_id) : '',
   };
   const route=routes[capability];
   if(!route) throw new Error('SARA_CAPABILITY_NOT_SUPPORTED');
