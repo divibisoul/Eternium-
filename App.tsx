@@ -12,7 +12,6 @@ import { Content } from '@google/genai';
 import { useAuditSystem } from './hooks/useAuditSystem.ts';
 import usePersistentState from './hooks/usePersistentState.ts';
 import { useAsasfSystem } from './hooks/useAsasfSystem.ts';
-import { capabilities as allCapabilities } from './data/capabilities.ts';
 import { AgentsPanel } from './components/AgentsPanel.tsx';
 import { useAgiCoreSystems } from './hooks/useAgiCoreSystems.ts';
 import { ChatInput } from './components/ChatInput.tsx';
@@ -48,7 +47,7 @@ const initialUiSystems: UISystemModule[] = [
     { id: 'guide', name: 'Guia de Orientação', status: UISystemStatus.MONITORING, icon: EyeIcon },
 ];
 
-const autonomousOperations: { type: OperationType; totalSteps: number; message: string; requiredCapability?: string }[] = [
+export const AUTONOMOUS_OPERATION_CATALOG: { type: OperationType; totalSteps: number; message: string; requiredCapability?: string }[] = [
     { type: OperationType.SCRE, totalSteps: 5, message: 'S.C.R.E. ativado autonomamente: Otimizando núcleo.', requiredCapability: 'scre' },
     { type: OperationType.ECAS, totalSteps: 8, message: 'E.C.A.S. ativado autonomamente: Sintetizando arquitetura.', requiredCapability: 'ecas' },
     { type: OperationType.CSAE, totalSteps: 6, message: 'CSAE ativado autonomamente: Reconfigurando pipeline.', requiredCapability: 'csae' },
@@ -58,13 +57,8 @@ const autonomousOperations: { type: OperationType; totalSteps: number; message: 
     { type: OperationType.ALGORITHMIC_CORRECTION, totalSteps: 12, message: 'Ciclo de Auto-Correção autônomo iniciado.' },
 ];
 
-// Initialize all capabilities as deployed from the start.
-const initialDeployedCapabilities: DeployedCapability[] = allCapabilities.map(cap => ({
-    id: cap.id,
-    name: cap.name,
-    status: 'Estável', // Initial status
-    metric: 75 + Math.random() * 25 // Initial random metric
-}));
+// Capability catalog and verified deployment state are intentionally separate.
+const initialDeployedCapabilities: DeployedCapability[] = [];
 
 
 const App: React.FC = () => {
@@ -201,24 +195,6 @@ const App: React.FC = () => {
         setIsSystemDegraded(hasCriticalErrors);
     }, [hasCriticalErrors]);
 
-    useEffect(() => {
-        const timer = setInterval(() => {
-            if (isLoading || activeOperations.length > 2) return;
-
-            const availableOps = autonomousOperations.filter(op => 
-                !activeOperations.some(active => active.type === op.type) &&
-                (!op.requiredCapability || deployedCapabilities.some(c => c.id === op.requiredCapability))
-            );
-
-            if (availableOps.length > 0 && Math.random() < 0.15) { // 15% chance every 10 seconds
-                const opToStart = availableOps[Math.floor(Math.random() * availableOps.length)];
-                initiateOperation(opToStart.type, opToStart.totalSteps, opToStart.message);
-            }
-        }, 10000);
-
-        return () => clearInterval(timer);
-    }, [isLoading, activeOperations, deployedCapabilities, initiateOperation]);
-    
      const handleSendMessage = async (text: string, imageFile: File | null = null) => {
         if (isLoading) return;
         
