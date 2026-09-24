@@ -5,7 +5,7 @@ export class SoulMeshMemoryTransport implements SoulMeshTransport {
   private readonly handlers = new Set<(message: SoulMeshMessage) => void | Promise<void>>();
 
   async send(message: SoulMeshMessage): Promise<void> {
-    for (const handler of this.handlers) void Promise.resolve(handler(message));
+    await Promise.all([...this.handlers].map(handler => Promise.resolve(handler(message))));
   }
 
   onMessage(handler: (message: SoulMeshMessage) => void | Promise<void>): () => void {
