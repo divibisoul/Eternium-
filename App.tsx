@@ -288,27 +288,14 @@ const App: React.FC = () => {
     const handleRunEruAudit = () => {
         if (isAuditing) return;
 
-        logEvent(AuditEventType.SYSTEM_AUDIT_ERU, 'Auditoria ERU iniciada pelo usuário.', 'info');
         setIsEruAuditModalOpen(true);
-        setIsAuditing(true);
+        setIsAuditing(false);
         setAuditProgress(0);
-
-        const totalPhases = 5;
-        let currentPhase = 0;
-        const totalDuration = 9500; 
-        const phaseDuration = totalDuration / totalPhases;
-
-        const interval = setInterval(() => {
-            currentPhase++;
-            if (currentPhase <= totalPhases) {
-                setAuditProgress(currentPhase);
-            } else {
-                clearInterval(interval);
-                setIsAuditing(false);
-                setIsEruAuditModalOpen(false);
-                logEvent(AuditEventType.SYSTEM_AUDIT_ERU, 'Auditoria ERU concluída. Sistema nominal.', 'info');
-            }
-        }, phaseDuration);
+        logEvent(
+            AuditEventType.ERROR_API,
+            'ERU solicitado, mas nenhum executor real de auditoria está conectado a esta interface.',
+            'error',
+        );
     };
 
     const handleCloseModal = (setter: React.Dispatch<React.SetStateAction<boolean>>) => () => setter(false);
