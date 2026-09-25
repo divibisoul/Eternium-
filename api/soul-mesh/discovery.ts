@@ -1,4 +1,4 @@
-export type SoulMeshPeer = { nucleus: 'N01'|'N02'|'N03'|'N04'|'N05'|'N06'; url: string; capabilities: string[]; lastSeen: number };
+export type SoulMeshPeer = { nucleus: 'N01'|'N02'|'N03'|'N04'|'N05'|'N06'|'N07'; url: string; capabilities: string[]; lastSeen: number };
 
 const staticPeers = (process.env.SOUL_MESH_PEERS ?? '').split(',').map((entry) => entry.trim()).filter(Boolean).map((entry) => {
   const [nucleus, url] = entry.split('|');
