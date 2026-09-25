@@ -1,4 +1,4 @@
-name: N06 validation diagnostics
+name: N02 validation diagnostics
 on:
   push:
     branches: [main]
@@ -24,7 +24,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-          cache: npm
+          # npm cache is intentionally not enabled: main has no lockfile, and setup-node cache requires one.
       - name: Verify toolchain
         run: node --version && npm --version
       - name: Install dependencies
