@@ -3,7 +3,7 @@
  * Carries ClareiraPacket through the existing soul-mesh/1 transport to N01.
  * It does not introduce a second mesh or replace the native nucleus runtime.
  */
-import { isClareiraPacket, type ClareiraMetrics, type ClareiraPacket } from '../../../shared/clareira-contract';
+import { isClareiraPacket, type ClareiraMetrics, type ClareiraPacket } from '../../shared/clareira-contract';
 
 let ingested=0, processed=0, dropped=0, errored=0, inFlight=0, lastLatency=0, startedAt=Date.now();
 const samples:number[]=[];
