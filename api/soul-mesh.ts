@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
 import { SOUL_MESH_CAPABILITIES } from '../src/soul-mesh/SoulMeshCapabilities';
 import { SOUL_MESH_CONTRACT_VERSION } from '../src/soul-mesh/SoulMeshProtocol';
 import { n02CapabilityRuntime, executeN02Agent, n02AgentRegistry } from '../src/soul-mesh/N02CapabilityRuntime';
+import { forwardClareiraToN01, clareiraMetrics } from '../src/soul-mesh/ClareiraBridge';
 
 const NUCLEUS_ID = 'N02' as const;
 const NUCLEI = new Set(['N01', 'N02', 'N03', 'N04', 'N05', 'N06', 'N07']);
@@ -202,6 +203,24 @@ export default async function handler(req:any,res:any) {
       transports:['http','supabase-realtime'],
       channels:{ in:PEERS.map(p=>`N02.IN.${p}`), out:PEERS.map(p=>`N02.OUT.${p}`) },
     });
+    return res.status(out.status).json(out.body);
+  }
+
+  if (m.capability === 'clareira.ingest') {
+    try {
+      const payload = await forwardClareiraToN01((m.payload as any)?.packet);
+      const out = envelope(m, 'response', payload);
+      return res.status(out.status).json(out.body);
+    } catch (error) {
+      const out = envelope(m, 'error', {
+        code: error instanceof Error ? error.message : 'CLAREIRA_FORWARD_FAILED',
+        capability: m.capability,
+      }, 502);
+      return res.status(out.status).json(out.body);
+    }
+  }
+  if (m.capability === 'clareira.metrics') {
+    const out = envelope(m, 'response', clareiraMetrics());
     return res.status(out.status).json(out.body);
   }
 
