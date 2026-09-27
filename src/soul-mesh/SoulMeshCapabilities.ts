@@ -29,6 +29,10 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'media'], tools: []
   },
   {
+    id: 'ai.generate.ollama', version: '1.0', description: 'N02 generative AI through a configured local Ollama OpenAI-compatible endpoint',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation', 'local-inference'], tools: []
+  },
+  {
     id: 'mesh.describe', version: '1.0', description: 'N02 identity, capabilities, tools and transport discovery',
     request: true, response: true, events: false, owner: 'N02', context: [], tools: []
   },
