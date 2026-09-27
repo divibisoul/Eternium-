@@ -1,4 +1,5 @@
-import { GoogleGenAI, Content, GenerateContentResponse } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
+import type { Content, GenerateContentResponse } from "@google/genai";
 import { SystemAspect, DeployedCapability } from "../types.ts";
 import { geminiRetryOptions, shouldFallbackGemini, withGeminiRetry } from "./geminiReliability.ts";
 
