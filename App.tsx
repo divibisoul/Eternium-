@@ -8,7 +8,7 @@ import { ArchitecturePanel } from './components/ArchitecturePanel.tsx';
 import { CodeBracketSquareIcon, MapIcon, ArrowsPathIcon, AtomIcon, EyeIcon } from './components/icons.tsx';
 import { Message, MessageRole, SystemAspect, AuditEventType, DeployedCapability, UISystemModule, UISystemStatus, ActiveOperation, OperationType, OperationStatus, AgiCoreModuleStatus, AgiCoreModule } from './types.ts';
 import { processUserDirective } from './services/geminiService.ts';
-import { Content } from '@google/genai';
+import type { Content } from '@google/genai';
 import { useAuditSystem } from './hooks/useAuditSystem.ts';
 import usePersistentState from './hooks/usePersistentState.ts';
 import { useAsasfSystem } from './hooks/useAsasfSystem.ts';
