@@ -111,13 +111,51 @@ function meshAuthorized(req: any, message: MeshMessage): boolean {
   return req.headers.authorization === `Bearer ${token}`;
 }
 
+function canonicalLegacyResponse(body: {
+  contractVersion: string; id: string; correlationId: string; source: string; target: string;
+  kind: 'response'|'error'; capability?: string; payload: unknown; timestamp: number;
+}, nonce: string): string {
+  return JSON.stringify({
+    version: '1.0',
+    contractVersion: body.contractVersion,
+    messageId: body.id,
+    source: body.source,
+    target: body.target,
+    timestamp: body.timestamp,
+    nonce,
+    correlationId: body.correlationId,
+    type: body.kind === 'error' ? 'ERROR' : 'TASK_RESULT',
+    payload: { capability: body.capability ?? '', payload: body.payload ?? {} },
+  });
+}
+
+function signEnvelope(body: any, nonce: string, secret: string): string {
+  return createHmac('sha256', secret).update(canonicalLegacyResponse(body, nonce), 'utf8').digest('hex');
+}
+
 const envelope = (m: MeshMessage, kind: 'response'|'error', payload: unknown, status = 200) => {
+  const id = randomUUID();
+  const timestamp = Date.now();
   const nonce = randomUUID();
-  return {
-    status,
-    body: { protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, id:randomUUID(), correlationId:m.correlationId,
-      source:NUCLEUS_ID, target:m.source, kind, capability:m.capability, payload, timestamp:Date.now(), meta:{runtime:'Eternium-',transport:'HTTP',encoding:'json',version:SOUL_MESH_CONTRACT_VERSION,traceId:m.meta?.traceId??m.correlationId,nonce} }
+  const body: any = {
+    protocol:'soul-mesh/1',
+    contractVersion:SOUL_MESH_CONTRACT_VERSION,
+    id,
+    correlationId:m.correlationId,
+    source:NUCLEUS_ID,
+    target:m.source,
+    kind,
+    capability:m.capability,
+    payload,
+    timestamp,
+    meta:{runtime:'Eternium-',transport:'HTTP',encoding:'json',version:SOUL_MESH_CONTRACT_VERSION,traceId:m.meta?.traceId??m.correlationId,nonce}
   };
+  const secret = process.env.SOUL_MESH_HMAC_SECRET?.trim();
+  if (secret) {
+    body.nonce = nonce;
+    body.hmac = signEnvelope(body, nonce, secret);
+  }
+  return { status, body };
 };
 
 export default async function handler(req:any,res:any) {
