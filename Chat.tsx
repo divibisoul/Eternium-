@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Message, MessageRole, SystemAspect, GroundingMetadata } from '../types.ts';
+import { Message, MessageRole, SystemAspect, GroundingMetadata } from './types.ts';
 import { SparklesIcon, SendIcon, UserIcon, BrainChipIcon, HeartIcon, GalaxyIcon, CopyIcon, CheckIcon, ThumbUpIcon, ThumbDownIcon, GlobeIcon } from './components/icons.tsx';
 import { SynthesisMetrics } from './components/SynthesisMetrics.tsx';
 import { FusionProcessVisualizer } from './components/FusionProcessVisualizer.tsx';
