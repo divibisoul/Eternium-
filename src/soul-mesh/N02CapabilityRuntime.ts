@@ -1,5 +1,6 @@
 import { SoulMeshCapabilityExecutor } from './SoulMeshCapabilityExecutor';
 import { createN02AIProviderBridge } from './N02AIProviderBridge';
+import { generateWithOllama, ollamaConfigured } from './N02OllamaProviderBridge';
 import { SoulMeshAgentRegistry } from './SoulMeshAgentRegistry';
 import { createSoulMeshAgent } from './SoulMeshAgentContract';
 
@@ -7,6 +8,9 @@ import { createSoulMeshAgent } from './SoulMeshAgentContract';
 export const n02CapabilityRuntime = new SoulMeshCapabilityExecutor();
 
 const handlers = createN02AIProviderBridge();
+if (ollamaConfigured()) {
+  handlers['ai.generate.ollama'] = async message => generateWithOllama(message.payload as any);
+}
 for (const [capability, handler] of Object.entries(handlers)) {
   if (!n02CapabilityRuntime.registry.has(capability)) {
     throw new Error(`N02_CAPABILITY_NOT_DECLARED:${capability}`);
