@@ -1,6 +1,6 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import {execFileSync} from 'node:child_process';
+const fs = require('node:fs');
+const path = require('node:path');
+const {execFileSync} = require('node:child_process');
 
 const manifestPath = process.env.FORENSIC_MANIFEST || 'docs/forensics/n02-manifest.json';
 const manifest = JSON.parse(fs.readFileSync(manifestPath,'utf8'));
