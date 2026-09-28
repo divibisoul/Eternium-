@@ -3,6 +3,7 @@ import type { Content, GenerateContentResponse } from "@google/genai";
 import { SystemAspect } from "../types.ts";
 import type { DeployedCapability } from "../types.ts";
 import { geminiRetryOptions, shouldFallbackGemini, withGeminiRetry } from "./geminiReliability.ts";
+import type { N02CognitivePipelineResult } from "../src/cognitive/N02CognitivePipeline";
 
 const getAiClient = () => {
   if (!process.env.API_KEY) {
@@ -99,6 +100,7 @@ export const processUserDirective = async (
   useWebSearch: boolean,
   deployedCapabilities: DeployedCapability[],
   isFullCognitionMode: boolean,
+  cognitivePipeline?: N02CognitivePipelineResult,
 ): Promise<GenerateContentResponse> => {
   const ai = getAiClient();
 
@@ -113,6 +115,11 @@ export const processUserDirective = async (
       ? `${baseSystemInstruction}\n\n--- INÍCIO DAS PERSONAS ATIVAS ---\n${activePersonas.join('\n\n')}\n--- FIM DAS PERSONAS ATIVAS ---`
       : "Você é um assistente de IA geral e prestativo chamado Aeternum. Responda de forma clara e direta às perguntas do usuário.";
     systemInstruction = `${enforcementPreamble}\n\n${personaInstruction}`;
+  }
+
+  if (cognitivePipeline) {
+    const pipelineInstruction = `\n\n--- N02 COGNITIVE PIPELINE REAL ---\nBNCv2: ${cognitivePipeline.bnc.sharedNeural}; dimensão=${cognitivePipeline.bnc.vector.length}.\nCSAE: estratégia=${cognitivePipeline.csae.strategy}; estágios=${cognitivePipeline.csae.stages.join(', ')}.\nDCRS: prioridade=${cognitivePipeline.dcrs.priority}; peso neural=${cognitivePipeline.dcrs.neuralWeight}; peso raciocínio=${cognitivePipeline.dcrs.reasoningWeight}.\nVagusBus: correlação=${cognitivePipeline.bnc.correlationId}.\n--- FIM DO PIPELINE ---`;
+    systemInstruction = `${systemInstruction}${pipelineInstruction}`;
   }
 
   const config = buildConfig(useWebSearch, systemInstruction);
