@@ -1,0 +1,4 @@
+import { describe, it, expect } from 'vitest';
+import { deriveRgoDual, createN02RgoMeshMessage } from './RgoFinding';
+const base = { schema_version:'1.0.0' as const,finding_id:'n02-1',object_id:'o1',timestamp:new Date().toISOString(),correlation_id:'c1',trace_id:'t1',source:{system:'test',module:'rgo',version:'1.0.0'},epistemic:{mode:'INSPECTION' as const,verification_state:'VERIFIED' as const},actionability:{status:'ACTIONABLE' as const},failure:{type:'BUG',description:'x',nature:'test'},correction_boundary:{problem_to_resolve:'x',required_property:'validate'},dual:{status:'UNRESOLVED' as const},evidence:[{id:'e1',kind:'test',ref:'test://rgo'}],provenance:{origin:'test',input_hash:'sha256:x'}};
+describe('N02 RGO adapter',()=>{it('derives only from declared boundary',()=>expect(deriveRgoDual(base).dual.status).toBe('DERIVED_FROM_CONTRACT'));it('builds canonical Mesh event',()=>expect(createN02RgoMeshMessage(base).capability).toBe('rgo.finding.ingest'));});
