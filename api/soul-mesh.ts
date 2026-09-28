@@ -198,6 +198,10 @@ export default async function handler(req:any,res:any) {
       return res.status(out.status).json(out.body);
     }
     try {
+      if (innerCapability === 'octacore.execute') {
+        const out = envelope(m, 'error', { code: 'OCTACORE_N02_NESTED_EXECUTION_FORBIDDEN' }, 400);
+        return res.status(out.status).json(out.body);
+      }
       const nested = {
         ...m,
         capability: innerCapability,
@@ -227,7 +231,7 @@ export default async function handler(req:any,res:any) {
   if (m.capability === 'mesh.handshake') {
     const out = envelope(m, 'response', {
       nucleus: NUCLEUS_ID, protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION,
-      status:'online', capabilities:[...SOUL_MESH_CAPABILITIES.map(c => c.id),'sara.health','sara.cycle','sara.audit','sara.regenerate','sara.state','sara.capabilities','sara.trace'], transports:['http','supabase-realtime']
+      status:'online', capabilities:[...SOUL_MESH_CAPABILITIES.map(c => c.id),'octacore.execute','sara.health','sara.cycle','sara.audit','sara.regenerate','sara.state','sara.capabilities','sara.trace'], transports:['http','supabase-realtime']
     });
     return res.status(out.status).json(out.body);
   }
