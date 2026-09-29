@@ -33,7 +33,7 @@ const Phase: React.FC<{ text: string; done: boolean; isCurrent: boolean; childre
 
 const RealityCheckModal: React.FC<RealityCheckModalProps> = ({ isOpen, onClose }) => {
     void onClose;
-    const phase = 0;
+    const phase: number = 0;
 
     if (!isOpen) return null;
 
