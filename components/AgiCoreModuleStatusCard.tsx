@@ -6,6 +6,7 @@ const statusConfig: Record<AgiCoreModuleStatus, { color: string; text: string; }
     [AgiCoreModuleStatus.ONLINE]: { color: 'bg-green-500', text: 'Online' },
     [AgiCoreModuleStatus.OFFLINE]: { color: 'bg-gray-500', text: 'Offline' },
     [AgiCoreModuleStatus.INITIALIZING]: { color: 'bg-blue-500', text: 'Inicializando' },
+    [AgiCoreModuleStatus.UNMEASURED]: { color: 'bg-gray-400', text: 'Não mensurado' },
     [AgiCoreModuleStatus.ERROR]: { color: 'bg-red-500', text: 'Erro' },
 };
 
@@ -20,7 +21,7 @@ const ProgressBar: React.FC<{ value: number; color: string; icon: React.ReactNod
 );
 
 export const AgiCoreModuleStatusCard: React.FC<{ module: AgiCoreModule }> = ({ module }) => {
-    const statusInfo = statusConfig[module.status] || statusConfig[AgiCoreModuleStatus.OFFLINE];
+    const statusInfo = statusConfig[module.status] || statusConfig[AgiCoreModuleStatus.UNMEASURED];
     const cpuColor = module.cpuUsage > 80 ? 'bg-red-500' : module.cpuUsage > 60 ? 'bg-yellow-500' : 'bg-cyan-500';
     const memColor = module.memoryUsage > 80 ? 'bg-red-500' : module.memoryUsage > 60 ? 'bg-yellow-500' : 'bg-purple-500';
 
@@ -32,7 +33,7 @@ export const AgiCoreModuleStatusCard: React.FC<{ module: AgiCoreModule }> = ({ m
                     <p className="text-xs text-gray-400 leading-tight">{module.description}</p>
                 </div>
                 <div className="flex items-center space-x-1.5 text-xs text-gray-300 flex-shrink-0 ml-2">
-                    <span className={`w-2 h-2 rounded-full ${statusInfo.color} ${module.status !== AgiCoreModuleStatus.OFFLINE ? 'animate-pulse' : ''}`}></span>
+                    <span className={`w-2 h-2 rounded-full ${statusInfo.color} ${module.status !== AgiCoreModuleStatus.OFFLINE && module.status !== AgiCoreModuleStatus.UNMEASURED ? 'animate-pulse' : ''}`}></span>
                     <span>{statusInfo.text}</span>
                 </div>
             </div>
