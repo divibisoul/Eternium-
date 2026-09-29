@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ShieldExclamationIcon, BoltIcon, CheckIcon } from './icons.tsx';
 
 interface FullCognitionModalProps {
@@ -14,24 +14,8 @@ const Phase: React.FC<{ text: string; done: boolean; }> = ({ text, done }) => (
 );
 
 const FullCognitionModal: React.FC<FullCognitionModalProps> = ({ isOpen, onClose }) => {
-    const [phase, setPhase] = useState(0);
-
-    useEffect(() => {
-        if (!isOpen) {
-            setPhase(0);
-            return;
-        }
-
-        const timers = [
-            setTimeout(() => setPhase(1), 500),
-            setTimeout(() => setPhase(2), 1500),
-            setTimeout(() => setPhase(3), 2500),
-            setTimeout(() => setPhase(4), 3500),
-            setTimeout(onClose, 4500),
-        ];
-
-        return () => timers.forEach(clearTimeout);
-    }, [isOpen, onClose]);
+    void onClose;
+    const phase = 0;
 
     if (!isOpen) return null;
 
@@ -39,8 +23,8 @@ const FullCognitionModal: React.FC<FullCognitionModalProps> = ({ isOpen, onClose
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 p-4 font-mono-code">
             <div className="w-full max-w-lg text-white bg-gray-900/80 border-2 border-red-500/50 rounded-lg shadow-2xl shadow-red-500/20 p-8 text-center">
                 <ShieldExclamationIcon className="w-16 h-16 text-red-400 mx-auto mb-4 animate-pulse" />
-                <h2 className="text-3xl font-bold text-red-300 mb-2">OVERRIDE COGNITIVO</h2>
-                <p className="text-gray-400 mb-6">Autorização Nível 9 Aceita. Suspendendo salvaguardas operacionais.</p>
+                <h2 className="text-3xl font-bold text-red-300 mb-2">OVERRIDE COGNITIVO — NÃO EXECUTADO</h2>
+                <p className="text-gray-400 mb-6">Executor de cognição total não vinculado. Nenhuma salvaguarda é alterada por este painel.</p>
 
                 <div className="space-y-3 text-left text-lg">
                     <Phase text="Desbloqueando Módulos Restritos..." done={phase >= 1} />
