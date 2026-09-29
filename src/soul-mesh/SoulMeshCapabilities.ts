@@ -62,6 +62,18 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: true, owner: 'N02', context: ['request', 'resources'], tools: []
   },
   {
+    id: 'clareira.ingest', version: '1.0', description: 'N02 Clareira packet relay to N01 through the canonical Mesh',
+    request: true, response: true, events: true, owner: 'N02', context: ['request', 'clareira'], tools: []
+  },
+  {
+    id: 'clareira.metrics', version: '1.0', description: 'N02 observable Clareira relay counters and latency samples',
+    request: true, response: true, events: false, owner: 'N02', context: ['telemetry', 'clareira'], tools: []
+  },
+  {
+    id: 'octacore.execute', version: '1.0', description: 'N02 OctaCore execution boundary over existing capability handlers',
+    request: true, response: true, events: false, owner: 'N02', context: ['execution', 'octacore'], tools: []
+  },
+  {
     id: 'mesh.describe', version: '1.0', description: 'N02 identity, capabilities, tools and transport discovery',
     request: true, response: true, events: false, owner: 'N02', context: [], tools: []
   },
