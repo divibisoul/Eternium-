@@ -14,6 +14,19 @@ const SCRERefactorModal: React.FC<SCREModalProps> = ({ isOpen, onClose, operatio
 
     if (!isOpen) return null;
 
+    const waitingForRuntime = !operation || operation.status === 'WAITING_RUNTIME';
+    if (waitingForRuntime) {
+        return (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 max-w-lg w-full text-center">
+                    <h3 className="text-lg font-bold text-gray-300 mb-3">Operação aguardando executor real</h3>
+                    <p className="text-sm text-gray-400">Nenhuma etapa foi marcada como executada por esta interface.</p>
+                    <button type="button" onClick={onClose} className="mt-5 px-4 py-2 rounded border border-gray-600 text-gray-300 hover:bg-gray-800">Fechar</button>
+                </div>
+            </div>
+        );
+    }
+
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-gray-900 border border-purple-500/50 rounded-lg p-6 max-w-md w-full">

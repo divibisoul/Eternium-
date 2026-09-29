@@ -8,6 +8,7 @@ const statusConfig: Record<AgentStatus, { color: string; text: string }> = {
     [AgentStatus.Standby]: { color: 'bg-yellow-500', text: 'Em Espera' },
     [AgentStatus.Analisando]: { color: 'bg-blue-500', text: 'Analisando' },
     [AgentStatus.Executando]: { color: 'bg-purple-500', text: 'Executando' },
+    [AgentStatus.NOT_OBSERVED]: { color: 'bg-gray-500', text: 'Não observado' },
 };
 
 export const AgentCard: React.FC<{

@@ -17,6 +17,7 @@ const statusColors: { [key: string]: string } = {
     'Otimizando Cache': 'text-blue-300',
     'Analisando Dados': 'text-yellow-300',
     'Em Espera': 'text-gray-400',
+    'Não observado': 'text-gray-500',
 };
 
 const statusDotColors: { [key: string]: string } = {
@@ -24,6 +25,7 @@ const statusDotColors: { [key: string]: string } = {
     'Otimizando Cache': 'bg-blue-400',
     'Analisando Dados': 'bg-yellow-400',
     'Em Espera': 'bg-gray-500',
+    'Não observado': 'bg-gray-500',
 };
 
 const actionMap: { [key: string]: (props: UISystemsMonitorProps) => void } = {
@@ -52,8 +54,8 @@ export const UISystemsMonitor: React.FC<UISystemsMonitorProps> = (props) => {
                             <sys.icon className="w-6 h-6 text-cyan-400 mx-auto mb-2" />
                             <p className="text-sm font-bold text-gray-200">{sys.name}</p>
                             <div className="flex items-center justify-center space-x-1.5 mt-1">
-                                <div className={`w-2 h-2 rounded-full ${statusDotColors[sys.status]} animate-pulse`}></div>
-                                <span className={`text-xs font-mono-code ${statusColors[sys.status]}`}>{sys.status}</span>
+                                <div className={`w-2 h-2 rounded-full ${statusDotColors[sys.status] ?? 'bg-gray-500'} ${sys.status === 'Não observado' ? '' : 'animate-pulse'}`}></div>
+                                <span className={`text-xs font-mono-code ${statusColors[sys.status] ?? 'text-gray-500'}`}>{sys.status}</span>
                             </div>
                         </button>
                     );

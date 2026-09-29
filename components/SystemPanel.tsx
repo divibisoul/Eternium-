@@ -69,10 +69,10 @@ const SynthesisButton: React.FC<{ isActive: boolean; onClick: () => void; }> = (
 }
 
 const IntegrityStatus: React.FC<{ hasErrors: boolean }> = ({ hasErrors }) => {
-    const text = hasErrors ? "Falha Detectada" : "Alinhamento Nominal";
-    const color = hasErrors ? "text-red-400" : "text-green-400";
+    const text = hasErrors ? "Falha Detectada" : "Nenhuma falha local observada";
+    const color = hasErrors ? "text-red-400" : "text-gray-400";
     return (
-        <div className="flex items-center space-x-1.5" title="Protocolo de Alinhamento Ético">
+        <div className="flex items-center space-x-1.5" title="Estado local observado pelo sistema de auditoria">
             <ShieldCheckIcon className={`w-4 h-4 ${color} ${hasErrors ? 'animate-pulse' : ''}`} />
             <span className="text-xs">Integridade: <span className={`${color} font-semibold`}>{text}</span></span>
         </div>

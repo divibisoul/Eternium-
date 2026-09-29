@@ -1,6 +1,7 @@
 /**
- * Eternium-side adapter for the Soul six-core mesh.
- * This keeps Eternium's cognitive capabilities independent from Android.
+ * Eternium-side adapter for the Soul mesh.
+ * Capability declaration is separate from execution. This adapter never
+ * echoes an input as a synthetic successful result.
  */
 export type EterniumCapability =
   | 'reasoning'
@@ -33,13 +34,28 @@ export interface EterniumTaskResult {
   error?: { code: string; message: string };
 }
 
-export const ETERNIUM_CAPABILITIES: EterniumCapability[] = [
+export type EterniumTaskExecutor = (task: EterniumTask) => Promise<unknown>;
+
+export const ETERNIUM_CAPABILITIES: readonly EterniumCapability[] = Object.freeze([
   'reasoning',
   'planning',
   'agent-execution',
   'multimodal-analysis',
   'gemini-inference',
-];
+]);
+
+let taskExecutor: EterniumTaskExecutor | null = null;
+
+export function bindEterniumTaskExecutor(executor: EterniumTaskExecutor): void {
+  if (taskExecutor && taskExecutor !== executor) {
+    throw new Error('ETERNium_TASK_EXECUTOR_ALREADY_BOUND');
+  }
+  taskExecutor = executor;
+}
+
+export function isEterniumTaskExecutorBound(): boolean {
+  return taskExecutor !== null;
+}
 
 export function announceEterniumCapabilities(): SoulMeshMessage<{ capabilities: EterniumCapability[] }> {
   return {
@@ -50,24 +66,41 @@ export function announceEterniumCapabilities(): SoulMeshMessage<{ capabilities: 
     target: '*',
     kind: 'capability:announce',
     timestamp: Date.now(),
-    payload: { capabilities: ETERNIUM_CAPABILITIES },
+    payload: { capabilities: [...ETERNIUM_CAPABILITIES] },
   };
 }
 
 export async function executeSoulTask(task: EterniumTask): Promise<EterniumTaskResult> {
   if (!ETERNIUM_CAPABILITIES.includes(task.capability)) {
-    return { success: false, error: { code: 'CAPABILITY_UNAVAILABLE', message: task.capability } };
+    return {
+      success: false,
+      error: {
+        code: 'CAPABILITY_UNAVAILABLE',
+        message: task.capability,
+      },
+    };
   }
 
-  // Dispatch remains provider-neutral: existing Eternium services perform the
-  // actual cognitive work; this adapter only translates the Soul mesh contract.
-  return {
-    success: true,
-    output: {
-      capability: task.capability,
-      input: task.input,
-      context: task.context,
-      provider: 'eternium',
-    },
-  };
+  if (!taskExecutor) {
+    return {
+      success: false,
+      error: {
+        code: 'EXECUTOR_UNBOUND',
+        message: 'Nenhum executor real foi conectado ao adaptador Eternium-SOUL.',
+      },
+    };
+  }
+
+  try {
+    const output = await taskExecutor(task);
+    return { success: true, output };
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        code: 'EXECUTION_FAILED',
+        message: error instanceof Error ? error.message : String(error),
+      },
+    };
+  }
 }

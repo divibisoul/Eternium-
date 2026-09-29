@@ -105,6 +105,7 @@ export enum ASASFStatus {
     ALERTA = 'ALERTA',
     ANALISANDO = 'ANALISANDO',
     REMEDIANDO = 'REMEDIANDO',
+    NAO_OBSERVADO = 'NAO_OBSERVADO',
 }
 
 export interface ASASFNodesState {
@@ -145,8 +146,9 @@ export interface Capability {
 export interface DeployedCapability {
   id: string;
   name: string;
-  status: 'Processando' | 'Otimizando' | 'Monitorando' | 'Estável';
-  metric: number;
+  status?: 'Processando' | 'Otimizando' | 'Monitorando' | 'Estável' | 'Não observado';
+  metric?: number;
+  evidence?: string;
 }
 
 export enum AgentStatus {
@@ -154,6 +156,7 @@ export enum AgentStatus {
     Standby = 'Em Espera',
     Analisando = 'Analisando',
     Executando = 'Executando',
+    NOT_OBSERVED = 'Não observado',
 }
 
 export interface Agent {
@@ -169,6 +172,7 @@ export enum UISystemStatus {
     OPTIMIZING = 'Otimizando Cache',
     ANALYZING = 'Analisando Dados',
     STANDBY = 'Em Espera',
+    NOT_OBSERVED = 'Não observado',
 }
 
 export interface UISystemModule {
@@ -190,6 +194,7 @@ export enum OperationType {
 
 export enum OperationStatus {
     IN_PROGRESS = 'IN_PROGRESS',
+    WAITING_RUNTIME = 'WAITING_RUNTIME',
     DONE = 'DONE',
 }
 
@@ -207,14 +212,15 @@ export enum AgiCoreModuleStatus {
     OFFLINE = 'Offline',
     INITIALIZING = 'Inicializando',
     ERROR = 'Erro',
+    NOT_OBSERVED = 'Não observado',
 }
 
 export interface AgiCoreModule {
     id: string;
     name: string;
     status: AgiCoreModuleStatus;
-    cpuUsage: number; // 0-100
-    memoryUsage: number; // 0-100
+    cpuUsage: number | null; // 0-100; null = não observado
+    memoryUsage: number | null; // 0-100; null = não observado
     description: string;
 }
 

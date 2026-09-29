@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { 
     CheckIcon,
     ShieldCheckIcon,
@@ -48,14 +48,20 @@ const PalCoreAuditModal: React.FC<PalCoreAuditModalProps> = ({ isOpen, onClose, 
     const phase = operation ? Math.floor(operation.progress) + 1 : 0;
     const isComplete = operation?.status === 'DONE';
 
-    useEffect(() => {
-        if (isComplete) {
-            setTimeout(onClose, 4000);
-        }
-    }, [isComplete, onClose]);
-
-
     if (!isOpen) return null;
+
+    const waitingForRuntime = !operation || operation.status === 'WAITING_RUNTIME';
+    if (waitingForRuntime) {
+        return (
+            <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+                <div className="bg-gray-900 border border-gray-600 rounded-lg p-6 max-w-lg w-full text-center">
+                    <h3 className="text-lg font-bold text-gray-300 mb-3">Operação aguardando executor real</h3>
+                    <p className="text-sm text-gray-400">Nenhuma etapa foi marcada como executada por esta interface.</p>
+                    <button type="button" onClick={onClose} className="mt-5 px-4 py-2 rounded border border-gray-600 text-gray-300 hover:bg-gray-800">Fechar</button>
+                </div>
+            </div>
+        );
+    }
 
     const renderPhaseContent = () => {
         switch(phase) {
@@ -104,34 +110,34 @@ const PalCoreAuditModal: React.FC<PalCoreAuditModalProps> = ({ isOpen, onClose, 
             case 5: // isComplete state
                 return (
                     <div className="animate-fadeIn-ops text-center">
-                        <h3 className="text-xl font-bold text-green-300 mb-4">Auditoria Concluída</h3>
+                        <h3 className="text-xl font-bold text-green-300 mb-4">Executor relatou conclusão</h3>
                         <div className="grid grid-cols-2 gap-4 text-left p-4 bg-gray-800 rounded-lg">
                            <div className="flex items-center space-x-2">
                                 <CheckIcon className="w-5 h-5 text-green-400"/>
                                 <div>
                                     <p className="text-gray-300 text-sm">Viabilidade Comercial</p>
-                                    <p className="text-white font-bold">Mantida</p>
+                                    <p className="text-white font-bold">Não observado</p>
                                 </div>
                            </div>
                             <div className="flex items-center space-x-2">
                                 <ShieldCheckIcon className="w-5 h-5 text-green-400"/>
                                 <div>
                                     <p className="text-gray-300 text-sm">Robustez Ética</p>
-                                    <p className="text-white font-bold">+75%</p>
+                                    <p className="text-white font-bold">N/O</p>
                                 </div>
                            </div>
                             <div className="flex items-center space-x-2">
                                 <ScaleIcon className="w-5 h-5 text-green-400"/>
                                 <div>
                                     <p className="text-gray-300 text-sm">Conformidade (Acessibilidade)</p>
-                                    <p className="text-white font-bold">+90%</p>
+                                    <p className="text-white font-bold">N/O</p>
                                 </div>
                            </div>
                             <div className="flex items-center space-x-2">
                                 <BrainChipIcon className="w-5 h-5 text-green-400"/>
                                 <div>
                                     <p className="text-gray-300 text-sm">Risco de Viés Sistêmico</p>
-                                    <p className="text-white font-bold">-85%</p>
+                                    <p className="text-white font-bold">N/O</p>
                                 </div>
                            </div>
                         </div>

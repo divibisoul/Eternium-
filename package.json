@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "audit:evidence": "node scripts/aeternum-evidence-boundary-check.mjs"
   },
   "dependencies": {
     "react-dom": "^19.1.0",

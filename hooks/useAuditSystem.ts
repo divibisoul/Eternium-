@@ -26,7 +26,11 @@ export const useAuditSystem = () => {
 
     const clearCriticalErrors = useCallback(() => {
         setHasCriticalErrors(false);
-        logEvent(AuditEventType.SYSTEM_INIT, 'Falha crítica remediada pelo ASASF. Sistema retornou ao estado nominal.', 'info');
+        logEvent(
+            AuditEventType.SYSTEM_RESTORED,
+            'Erro local marcado como limpo pelo operador. Nenhuma remediação externa é declarada sem evidência do executor SARA.',
+            'warn',
+        );
     }, [logEvent]);
 
      useEffect(() => {
