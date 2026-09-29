@@ -1,36 +1,38 @@
+import React from 'react';
 
-import React, { useState, useEffect } from 'react';
+type MetricValue = number | null;
 
-const DCRSMonitor: React.FC = () => {
-    const [metrics, setMetrics] = useState({ cpu: 0, memory: 0, cognitive: 0, bandwidth: 0 });
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setMetrics({
-                cpu: 40 + Math.random() * 25,
-                memory: 55 + Math.random() * 20,
-                cognitive: 30 + Math.random() * 50,
-                bandwidth: 70 + Math.random() * 25,
-            });
-        }, 2000);
-        return () => clearInterval(interval);
-    }, []);
-
-    const MetricBar: React.FC<{ label: string; value: number; color: string }> = ({ label, value, color }) => (
+const MetricBar: React.FC<{ label: string; value: MetricValue; color: string }> = ({ label, value, color }) => {
+    const measured = typeof value === 'number' && Number.isFinite(value);
+    return (
         <div>
             <div className="flex justify-between items-baseline text-xs mb-1">
                 <span className="text-gray-300">{label}</span>
-                <span className={`font-mono-code font-bold ${color}`}>{value.toFixed(1)}%</span>
+                <span className={`font-mono-code font-bold ${color}`}>{measured ? `${value.toFixed(1)}%` : 'N/D'}</span>
             </div>
             <div className="w-full bg-gray-700/50 rounded-full h-1.5">
-                <div className={`h-1.5 rounded-full transition-all duration-500 ease-in-out ${color.replace('text-', 'bg-')}`} style={{ width: `${value}%` }}></div>
+                {measured && (
+                    <div
+                        className={`h-1.5 rounded-full transition-all duration-500 ease-in-out ${color.replace('text-', 'bg-')}`}
+                        style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
+                    />
+                )}
             </div>
         </div>
     );
+};
+
+const DCRSMonitor: React.FC = () => {
+    // No runtime telemetry source is connected to this presentation component.
+    // Zero/random values would falsely imply DCRS measurements.
+    const metrics = { cpu: null, memory: null, cognitive: null, bandwidth: null };
 
     return (
         <div className="bg-gray-800/80 p-3 rounded-lg border border-blue-500/30 mb-4">
-            <h4 className="text-sm font-bold text-blue-300 mb-2">D.C.R.S. Monitor</h4>
+            <div className="flex items-center justify-between mb-2">
+                <h4 className="text-sm font-bold text-blue-300">D.C.R.S. Monitor</h4>
+                <span className="text-[10px] font-mono-code text-gray-500">TELEMETRIA: N/D</span>
+            </div>
             <div className="space-y-2">
                 <MetricBar label="CPU" value={metrics.cpu} color="text-green-400" />
                 <MetricBar label="Memória" value={metrics.memory} color="text-purple-400" />

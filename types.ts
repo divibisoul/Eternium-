@@ -206,6 +206,7 @@ export enum AgiCoreModuleStatus {
     ONLINE = 'Online',
     OFFLINE = 'Offline',
     INITIALIZING = 'Inicializando',
+    UNMEASURED = 'Não mensurado',
     ERROR = 'Erro',
 }
 
