@@ -2,10 +2,13 @@ import { createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
 import { SOUL_MESH_CAPABILITIES } from '../src/soul-mesh/SoulMeshCapabilities';
 import { SOUL_MESH_CONTRACT_VERSION } from '../src/soul-mesh/SoulMeshProtocol';
 import { n02CapabilityRuntime, executeN02Agent, n02AgentRegistry } from '../src/soul-mesh/N02CapabilityRuntime';
+import { forwardClareiraToN01, clareiraMetrics } from '../src/soul-mesh/ClareiraBridge';
 
 const NUCLEUS_ID = 'N02' as const;
 const NUCLEI = new Set(['N01', 'N02', 'N03', 'N04', 'N05', 'N06', 'N07']);
 const PEERS = ['N01', 'N03', 'N04', 'N05', 'N06', 'N07'] as const;
+const OCTACORE_CAPABILITY = 'octacore.execute';
+const declaredCapabilities = () => [...SOUL_MESH_CAPABILITIES.map(c => c.id), 'sara.health', 'sara.cycle', 'sara.audit', 'sara.regenerate', 'sara.state', 'sara.capabilities', 'sara.trace'];
 const MAX_BODY_BYTES = 1_000_000;
 const MAX_CLOCK_SKEW_MS = 30_000;
 const REPLAY_WINDOW_MS = 5 * 60_000;
@@ -185,7 +188,7 @@ export default async function handler(req:any,res:any) {
   if (m.capability === 'mesh.handshake') {
     const out = envelope(m, 'response', {
       nucleus: NUCLEUS_ID, protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION,
-      status:'online', capabilities:[...SOUL_MESH_CAPABILITIES.map(c => c.id),'sara.health','sara.cycle','sara.audit','sara.regenerate','sara.state','sara.capabilities','sara.trace'], transports:['http','supabase-realtime']
+      status:'online', capabilities: declaredCapabilities(), transports:['http','supabase-realtime']
     });
     return res.status(out.status).json(out.body);
   }
@@ -196,13 +199,71 @@ export default async function handler(req:any,res:any) {
   if (m.capability === 'mesh.describe') {
     const out = envelope(m, 'response', {
       nucleus: NUCLEUS_ID, peers:[...PEERS], protocol:'soul-mesh/1', contractVersion:SOUL_MESH_CONTRACT_VERSION, status:'online',
-      declaredCapabilities:SOUL_MESH_CAPABILITIES.map(c => c.id),
+      declaredCapabilities: declaredCapabilities(),
       executableCapabilities:n02CapabilityRuntime.listExecutable(),
       agents:n02AgentRegistry.list().map(agent => ({ id:agent.id, capabilities:agent.capabilities })),
       transports:['http','supabase-realtime'],
       channels:{ in:PEERS.map(p=>`N02.IN.${p}`), out:PEERS.map(p=>`N02.OUT.${p}`) },
     });
     return res.status(out.status).json(out.body);
+  }
+
+  if (m.capability === 'clareira.ingest') {
+    try {
+      const packet = (m.payload as { packet?: unknown } | null)?.packet;
+      const result = await forwardClareiraToN01(packet as any);
+      const out = envelope(m, 'response', result);
+      return res.status(out.status).json(out.body);
+    } catch (error) {
+      const out = envelope(m, 'error', { code: error instanceof Error ? error.message : 'CLAREIRA_FORWARD_FAILED', capability: m.capability }, 502);
+      return res.status(out.status).json(out.body);
+    }
+  }
+
+  if (m.capability === 'clareira.metrics') {
+    const out = envelope(m, 'response', clareiraMetrics());
+    return res.status(out.status).json(out.body);
+  }
+
+  if (m.capability === OCTACORE_CAPABILITY) {
+    const value = m.payload as { capability?: unknown; payload?: unknown; job_id?: unknown } | null;
+    const innerCapability = typeof value?.capability === 'string' ? value.capability.trim() : '';
+    if (!innerCapability) {
+      const out = envelope(m, 'error', { code: 'OCTACORE_N02_CAPABILITY_REQUIRED' }, 400);
+      return res.status(out.status).json(out.body);
+    }
+    if (innerCapability === 'mesh.ping') {
+      const out = envelope(m, 'response', {
+        ok: true, kernel: 'G2', nucleus: NUCLEUS_ID, capability: innerCapability,
+        job_id: typeof value?.job_id === 'string' ? value.job_id : undefined,
+        value: { ok: true, nucleus: NUCLEUS_ID, handler: 'N02.mesh.ping', echoed: value?.payload ?? {}, processedAt: Date.now() },
+      });
+      return res.status(out.status).json(out.body);
+    }
+    if (innerCapability === 'mesh.describe') {
+      const out = envelope(m, 'response', {
+        ok: true, kernel: 'G2', nucleus: NUCLEUS_ID, capability: innerCapability,
+        job_id: typeof value?.job_id === 'string' ? value.job_id : undefined,
+        value: { nucleus: NUCLEUS_ID, peers: [...PEERS], protocol: 'soul-mesh/1', contractVersion: SOUL_MESH_CONTRACT_VERSION, executableCapabilities: n02CapabilityRuntime.listExecutable() },
+      });
+      return res.status(out.status).json(out.body);
+    }
+    if (!n02CapabilityRuntime.has(innerCapability)) {
+      const out = envelope(m, 'error', { code: 'OCTACORE_N02_CAPABILITY_NOT_EXECUTABLE', capability: innerCapability }, 501);
+      return res.status(out.status).json(out.body);
+    }
+    try {
+      const nested = { ...m, capability: innerCapability, payload: value?.payload ?? {} };
+      const result = await executeN02Agent(nested);
+      const out = envelope(m, 'response', {
+        ok: true, kernel: 'G2', nucleus: NUCLEUS_ID, capability: innerCapability,
+        job_id: typeof value?.job_id === 'string' ? value.job_id : undefined, value: result,
+      });
+      return res.status(out.status).json(out.body);
+    } catch (error) {
+      const out = envelope(m, 'error', { code: 'OCTACORE_N02_EXECUTION_ERROR', capability: innerCapability, detail: error instanceof Error ? error.message : String(error) }, 502);
+      return res.status(out.status).json(out.body);
+    }
   }
 
   if (!m.capability) return res.status(400).json({ error:'CAPABILITY_REQUIRED', correlationId:m.correlationId });
