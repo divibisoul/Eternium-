@@ -1,5 +1,3 @@
-
-import { useState, useEffect } from 'react';
 import { ASASFNodesState, ASASFStatus } from '../types.ts';
 
 const INITIAL_STATE: ASASFNodesState = {
@@ -10,33 +8,19 @@ const INITIAL_STATE: ASASFNodesState = {
     psi: ASASFStatus.NOMINAL,
 };
 
-export const useAsasfSystem = (hasCriticalErrors: boolean) => {
-    const [asasfNodes, setAsasfNodes] = useState<ASASFNodesState>(INITIAL_STATE);
-    const [isRemediating, setIsRemediating] = useState(false);
-
-    useEffect(() => {
-        if (hasCriticalErrors && !isRemediating) {
-            setIsRemediating(true);
-            const timeouts: ReturnType<typeof setTimeout>[] = [];
-
-            // Sequence of state changes to simulate remediation based on the 5-phase Reverse Equation
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, etr: ASASFStatus.ALERTA })), 500)); // Λ - Alerta
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, etr: ASASFStatus.ANALISANDO, ara: ASASFStatus.ALERTA })), 1500));
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, ara: ASASFStatus.ANALISANDO })), 2500)); // Π - Análise
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, ara: ASASFStatus.NOMINAL, er: ASASFStatus.ALERTA })), 4000));
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, er: ASASFStatus.REMEDIANDO })), 5000)); // Σ - Remediação
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, er: ASASFStatus.NOMINAL, itr: ASASFStatus.REMEDIANDO })), 6500)); // Δ - Refino
-            timeouts.push(setTimeout(() => setAsasfNodes(prev => ({ ...prev, itr: ASASFStatus.NOMINAL, psi: ASASFStatus.ANALISANDO })), 8000)); // Ψ - Auditoria
-            timeouts.push(setTimeout(() => {
-                setAsasfNodes(INITIAL_STATE);
-                setIsRemediating(false);
-            }, 9500)); // Ciclo completo
-
-            return () => {
-                timeouts.forEach(clearTimeout);
-            };
-        }
-    }, [hasCriticalErrors, isRemediating]);
-
-    return { asasfNodes, isRemediating };
+const ALERT_STATE: ASASFNodesState = {
+    etr: ASASFStatus.ALERTA,
+    ara: ASASFStatus.ANALISANDO,
+    er: ASASFStatus.ALERTA,
+    itr: ASASFStatus.NOMINAL,
+    psi: ASASFStatus.ANALISANDO,
 };
+
+/**
+ * ASASF is a state projection, not a timer-based remediation simulator.
+ * Without a bound corrective executor, it never claims REMEDIANDO/completed.
+ */
+export const useAsasfSystem = (hasCriticalErrors: boolean) => ({
+    asasfNodes: hasCriticalErrors ? ALERT_STATE : INITIAL_STATE,
+    isRemediating: false,
+});
