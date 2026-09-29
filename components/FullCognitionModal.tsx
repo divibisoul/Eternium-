@@ -15,7 +15,7 @@ const Phase: React.FC<{ text: string; done: boolean; }> = ({ text, done }) => (
 
 const FullCognitionModal: React.FC<FullCognitionModalProps> = ({ isOpen, onClose }) => {
     void onClose;
-    const phase = 0;
+    const phase: number = 0;
 
     if (!isOpen) return null;
 
