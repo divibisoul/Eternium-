@@ -42,6 +42,14 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'media', 'vision'], tools: []
   },
   {
+    id: 'neural_forge', version: '1.0', description: 'N02 NeuralForge computational modeling path using the preserved functional persona and Gemini provider',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'neural-modeling'], tools: []
+  },
+  {
+    id: 'asc', version: '1.0', description: 'N02 autonomous scientific discovery reasoning path using the preserved functional persona and Gemini provider',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'scientific-discovery'], tools: []
+  },
+  {
     id: 'einstein_code', version: '1.0', description: 'N02 code audit reasoning path using the existing Gemini provider with the preserved CodeGenesis persona contract',
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'code-audit'], tools: []
   },
