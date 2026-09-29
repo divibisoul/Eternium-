@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ArrowsPathIcon, ShieldCheckIcon, ClockIcon, CpuChipIcon } from './icons.tsx';
 
 const MetricDisplay: React.FC<{ label: string; value: string; icon: React.ReactNode; }> = ({ label, value, icon }) => (
@@ -19,30 +19,12 @@ const strategies = [
 ];
 
 const DIASPerformanceMonitor: React.FC = () => {
-    const [metrics, setMetrics] = useState({
-        latency: 180 + Math.random() * 50,
-        cpu: 60 + Math.random() * 15,
-        ethicalScore: 99.5 + Math.random() * 0.5,
-    });
-    const [strategyIndex, setStrategyIndex] = useState(3);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setMetrics({
-                latency: Math.max(50, 180 + (Math.random() - 0.5) * 150),
-                cpu: Math.max(20, 60 + (Math.random() - 0.5) * 50),
-                ethicalScore: Math.min(100, 99.5 + (Math.random() - 0.4) * 0.5),
-            });
-            setStrategyIndex(Math.floor(Math.random() * strategies.length));
-        }, 3000);
-        return () => clearInterval(interval);
-    }, []);
-    
-    const currentStrategy = strategies[strategyIndex];
+    const metrics = { latency: null as number | null, cpu: null as number | null, ethicalScore: null as number | null };
+    const currentStrategy = { text: 'Telemetria e executor Δ não vinculados', color: 'text-gray-400' };
 
     return (
         <div className="bg-gray-800/80 p-4 rounded-lg border border-orange-500/30 mb-4 animate-fade-in">
-             <style>{`
+            <style>{`
                 @keyframes fade-in {
                     from { opacity: 0; transform: translateY(-10px); }
                     to { opacity: 1; transform: translateY(0); }
@@ -53,13 +35,13 @@ const DIASPerformanceMonitor: React.FC = () => {
                 <ArrowsPathIcon className="w-8 h-8 text-orange-400 mr-3"/>
                 <div>
                     <h4 className="text-md font-bold text-orange-300">DIAS Adaptation Monitor (Δ)</h4>
-                    <p className="text-xs text-gray-400">Análise de Performance e Feedback</p>
+                    <p className="text-xs text-gray-400">Análise de Performance e Feedback · Telemetria N/D</p>
                 </div>
             </div>
             <div className="space-y-3">
-                <MetricDisplay label="Latência Média" value={`${metrics.latency.toFixed(0)}ms`} icon={<ClockIcon className="w-4 h-4"/>} />
-                <MetricDisplay label="Carga de CPU" value={`${metrics.cpu.toFixed(1)}%`} icon={<CpuChipIcon className="w-4 h-4"/>} />
-                <MetricDisplay label="Score Ético" value={`${metrics.ethicalScore.toFixed(2)}%`} icon={<ShieldCheckIcon className="w-4 h-4"/>} />
+                <MetricDisplay label="Latência Média" value={metrics.latency === null ? 'N/D' : `${metrics.latency.toFixed(0)}ms`} icon={<ClockIcon className="w-4 h-4"/>} />
+                <MetricDisplay label="Carga de CPU" value={metrics.cpu === null ? 'N/D' : `${metrics.cpu.toFixed(1)}%`} icon={<CpuChipIcon className="w-4 h-4"/>} />
+                <MetricDisplay label="Score Ético" value={metrics.ethicalScore === null ? 'N/D' : `${metrics.ethicalScore.toFixed(2)}%`} icon={<ShieldCheckIcon className="w-4 h-4"/>} />
                 <div className="pt-2 border-t border-gray-700/50">
                     <div className="flex justify-between items-center text-sm">
                         <span className="text-gray-300">Estratégia Atual:</span>
