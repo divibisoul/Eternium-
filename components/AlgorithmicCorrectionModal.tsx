@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { 
     BoltIcon,
     BrainChipIcon,
@@ -38,37 +38,10 @@ const ModuleNode: React.FC<{
     );
 };
 
-const AnimatedMetric: React.FC<{ start: number; end: number; duration: number; suffix?: string; prefix?: string;}> = ({ start, end, duration, suffix = '', prefix = '' }) => {
-    const [current, setCurrent] = useState(start);
-
-    useEffect(() => {
-        let startTime: number;
-        const animate = (time: number) => {
-            if (!startTime) startTime = time;
-            const progress = Math.min((time - startTime) / duration, 1);
-            const value = start + progress * (end - start);
-            setCurrent(value);
-            if (progress < 1) {
-                requestAnimationFrame(animate);
-            }
-        };
-        const handle = requestAnimationFrame(animate);
-        return () => cancelAnimationFrame(handle);
-    }, [start, end, duration]);
-
-    return <span className="font-mono-code">{prefix}{current.toFixed(0)}{suffix}</span>;
-};
-
 const AlgorithmicCorrectionModal: React.FC<AlgorithmicCorrectionModalProps> = ({ isOpen, onClose, operation }) => {
     const phase = operation ? Math.floor(operation.progress / (operation.totalSteps / 5)) : 0;
     const isComplete = operation?.status === 'DONE';
     
-    useEffect(() => {
-        if (isComplete) {
-            setTimeout(onClose, 5000);
-        }
-    }, [isComplete, onClose]);
-
     const getModuleStatus = (phaseNumber: number) => {
         if (phase < phaseNumber) return "Inativo";
         if (phase === phaseNumber) return "Analisando...";
@@ -112,34 +85,34 @@ const AlgorithmicCorrectionModal: React.FC<AlgorithmicCorrectionModalProps> = ({
         
         return (
             <div className="text-center w-full max-w-lg">
-                <h3 className="text-xl font-bold text-green-300 mb-4">Auto-Correção Concluída</h3>
+                <h3 className="text-xl font-bold text-green-300 mb-4">Executor reportou DONE</h3>
                  <div className="grid grid-cols-2 gap-4 text-left p-4 bg-gray-800 rounded-lg">
                     <div className="flex items-center space-x-2">
                         <ArrowsPathIcon className="w-5 h-5 text-green-400"/>
                         <div>
                             <p className="text-gray-300 text-sm">Eficiência Algorítmica</p>
-                            <p className="text-white font-bold"><AnimatedMetric start={0} end={32} duration={1500} prefix="+" suffix="%"/> </p>
+                            <p className="text-white font-bold">N/D</p>
                         </div>
                     </div>
                      <div className="flex items-center space-x-2">
                         <ScaleIcon className="w-5 h-5 text-green-400"/>
                         <div>
                             <p className="text-gray-300 text-sm">Adaptabilidade</p>
-                            <p className="text-white font-bold"><AnimatedMetric start={0} end={18} duration={1500} prefix="+" suffix="%"/> </p>
+                            <p className="text-white font-bold">N/D</p>
                         </div>
                     </div>
                      <div className="flex items-center space-x-2">
                         <ArrowsPathIcon className="w-5 h-5 text-green-400"/>
                         <div>
                             <p className="text-gray-300 text-sm">Redução de Latência</p>
-                            <p className="text-white font-bold"><AnimatedMetric start={0} end={41} duration={1500} prefix="-" suffix="ms"/> </p>
+                            <p className="text-white font-bold">N/D</p>
                         </div>
                     </div>
                     <div className="flex items-center space-x-2 col-span-2">
                         <GalaxyIcon className="w-5 h-5 text-green-400"/>
                         <div>
                             <p className="text-gray-300 text-sm">Propriedade Emergente</p>
-                            <p className="text-white font-bold">Heurística de predição de recursos sintetizada</p>
+                            <p className="text-white font-bold">Não mensurada — artefato/telemetria não vinculados</p>
                         </div>
                     </div>
                 </div>

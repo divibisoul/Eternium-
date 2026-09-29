@@ -46,7 +46,7 @@ const ASCModal: React.FC<ASCModalProps> = ({ isOpen, onClose, operation }) => {
                  {isComplete && (
                      <div className="mt-4 p-3 bg-green-900/50 border border-green-500 rounded-lg text-center flex items-center justify-center space-x-2">
                         <GalaxyIcon className="w-5 h-5 text-green-300" />
-                        <p className="font-bold text-green-300">Novo insight transdisciplinar gerado!</p>
+                        <p className="font-bold text-green-300">Executor reportou DONE.</p><p className="text-xs text-gray-400 mt-1">Insight não é inferido sem resultado/artefato retornado pelo executor.</p>
                     </div>
                 )}
             </div>
