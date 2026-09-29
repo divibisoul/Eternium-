@@ -33,6 +33,18 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation', 'local-inference'], tools: []
   },
   {
+    id: 'neural.bnc_v2', version: '1.0', description: 'N02 BNCv2 neural signal processing adapter',
+    request: true, response: true, events: true, owner: 'N02', context: ['request', 'neural'], tools: []
+  },
+  {
+    id: 'cognitive.csae', version: '1.0', description: 'N02 Cognitive Self-Architecting Engine planning stage',
+    request: true, response: true, events: true, owner: 'N02', context: ['request', 'planning'], tools: []
+  },
+  {
+    id: 'resource.dcrs', version: '1.0', description: 'N02 Dynamic Cognitive Resource Scheduler allocation stage',
+    request: true, response: true, events: true, owner: 'N02', context: ['request', 'resources'], tools: []
+  },
+  {
     id: 'mesh.describe', version: '1.0', description: 'N02 identity, capabilities, tools and transport discovery',
     request: true, response: true, events: false, owner: 'N02', context: [], tools: []
   },
