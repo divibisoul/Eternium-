@@ -17,6 +17,7 @@ const SCRERefactorModal: React.FC<SCREModalProps> = ({ isOpen, onClose, operatio
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-gray-900 border border-purple-500/50 rounded-lg p-6 max-w-md w-full">
+                {operation?.status === 'DONE' ? <p className="text-xs text-gray-400 mb-4">Executor reportou DONE; nenhum código/refatoração é considerado validado sem artefato de saída.</p> : null}
                 <h3 className="text-lg font-bold text-purple-300 mb-4">Ciclo de Refatoração S.C.R.E.</h3>
                 <div className="space-y-3">
                     {steps.map((step, index) => (
