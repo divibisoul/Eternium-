@@ -1,0 +1,34 @@
+name: N02 broad forensic reintegration
+on:
+  push:
+    branches:
+      - fix/n02-reintegration-broad-audit-2026-09-29
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  forensic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Broad capability ledger
+        run: node scripts/n02-capability-ledger.cjs
+      - name: RGO contract test
+        run: npx tsx src/rgo/RgoFinding.test.ts
+      - name: OctaCore boundary test
+        run: npx tsx api/n02-reintegration.test.ts
+      - name: Publish forensic artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: n02-capability-ledger
+          path: artifacts/n02-capability-ledger.json
