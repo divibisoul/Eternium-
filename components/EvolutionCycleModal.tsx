@@ -29,7 +29,7 @@ const pillarIcons = [
 export const EvolutionCycleModal: React.FC<EvolutionCycleModalProps> = ({ isOpen, onClose }) => {
     void onClose;
     const log: string[] = [];
-    const currentStep = -1;
+    const currentStep: number = -1;
     const agencyIndex = 0;
     const learningRate = 0;
 
