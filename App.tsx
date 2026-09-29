@@ -164,42 +164,15 @@ const App: React.FC = () => {
     }, [activeMode, logEvent, setMessages]);
     
     const initiateOperation = useCallback((type: OperationType, totalSteps: number, message: string) => {
-        const newOp: ActiveOperation = {
-            id: `op_${Date.now()}`, type, totalSteps, message,
-            status: OperationStatus.IN_PROGRESS, progress: 0,
-        };
-        setActiveOperations(prev => [...prev, newOp]);
-        setActiveModalOperation(newOp);
-    }, []);
-
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setActiveOperations(prevOps => {
-                if (prevOps.filter(op => op.status === OperationStatus.IN_PROGRESS).length === 0) {
-                    return prevOps;
-                }
-
-                let hasChanged = false;
-                const updatedOps = prevOps.map(op => {
-                    if (op.status === OperationStatus.IN_PROGRESS) {
-                        hasChanged = true;
-                        const newProgress = op.progress + 1;
-                        if (newProgress >= op.totalSteps) {
-                            logEvent(AuditEventType.OPERATION_COMPLETE, `Operação ${op.type} concluída.`, 'info');
-                            return { ...op, progress: op.totalSteps, status: OperationStatus.DONE };
-                        }
-                        return { ...op, progress: newProgress };
-                    }
-                    return op;
-                });
-                
-                return hasChanged ? updatedOps : prevOps;
-            });
-        }, 1200);
-
-        return () => clearInterval(interval);
-    }, [logEvent]);
-
+        void totalSteps;
+        void message;
+        logEvent(
+            AuditEventType.MODULE_OPERATION,
+            'Operação ' + type + ' solicitada, mas nenhum executor runtime está vinculado a esta operação no N02 atual. Nada foi simulado ou marcado como concluído.',
+            'warn',
+        );
+        addSystemMessage('Operação ' + type + ': executor runtime não vinculado; execução bloqueada sem fabricar progresso.');
+    }, [addSystemMessage, logEvent]);
     useEffect(() => {
         const completedOp = activeOperations.find(op => op.status === OperationStatus.DONE);
         if (completedOp) {
