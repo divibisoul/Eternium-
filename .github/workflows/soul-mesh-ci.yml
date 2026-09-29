@@ -19,5 +19,11 @@ jobs:
         run: npx tsc -p tsconfig.mesh.json --noEmit
       - name: Gemini reliability tests
         run: node --experimental-transform-types services/geminiReliability.test.ts
+      - name: N02 capability execution regressions
+        run: |
+          node --experimental-transform-types src/soul-mesh/N02FunctionalCapabilities.test.ts
+          node --experimental-transform-types src/soul-mesh/N02TransportIntegrity.test.ts
+      - name: N02 restored boundary regressions
+        run: node --experimental-transform-types api/n02-reintegration.test.ts
       - name: Build web runtime
         run: npm run build
