@@ -28,8 +28,8 @@ const ECASSynthesisModal: React.FC<ECASModalProps> = ({ isOpen, onClose, operati
                 ) : (
                     <div className="flex flex-col items-center">
                         <CheckIcon className="w-16 h-16 text-green-400 mb-2"/>
-                        <p className="text-green-300 font-bold">Nova Capacidade Sintetizada!</p>
-                        <p className="text-gray-400 text-sm">Integrando ao arsenal de evolução...</p>
+                        <p className="text-green-300 font-bold">Executor reportou DONE</p>
+                        <p className="text-gray-400 text-sm">Este painel não recebeu o artefato da síntese; nenhuma nova capacidade é inferida a partir do status visual.</p>
                     </div>
                 )}
             </div>
