@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ScaleIcon, CheckIcon, ShieldCheckIcon } from './icons.tsx';
 
 interface GovernanceReportModalProps {
@@ -15,30 +14,10 @@ const StatCard: React.FC<{ title: string; value: string; color: string; }> = ({ 
 );
 
 export const GovernanceReportModal: React.FC<GovernanceReportModalProps> = ({ isOpen, onClose }) => {
-    const [entropySignature, setEntropySignature] = useState('');
-
-    useEffect(() => {
-        if (isOpen) {
-            // Generate a fake entropy signature on open
-            const randomData = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
-            const buffer = new Uint8Array(randomData);
-            window.crypto.subtle.digest('SHA-256', buffer).then(hashBuffer => {
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-                setEntropySignature(hashHex.substring(0, 32) + '...');
-            });
-        }
-    }, [isOpen]);
-
-    if (!isOpen) {
-        return null;
-    }
+    if (!isOpen) return null;
 
     return (
-        <div 
-            className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center z-50 p-4 animate-fade-in"
-            onClick={onClose}
-        >
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-lg flex items-center justify-center z-50 p-4 animate-fade-in" onClick={onClose}>
             <style>{`
                 @keyframes fade-in-gov {
                     from { opacity: 0; transform: scale(0.95) translateY(10px); }
@@ -46,10 +25,7 @@ export const GovernanceReportModal: React.FC<GovernanceReportModalProps> = ({ is
                 }
                 .animate-fade-in { animation: fade-in-gov 0.3s ease-out forwards; }
             `}</style>
-            <div 
-                className="relative bg-gray-900/70 border border-teal-400/30 rounded-lg shadow-2xl shadow-teal-500/10 w-full max-w-2xl flex flex-col"
-                onClick={e => e.stopPropagation()}
-            >
+            <div className="relative bg-gray-900/70 border border-teal-400/30 rounded-lg shadow-2xl shadow-teal-500/10 w-full max-w-2xl flex flex-col" onClick={e => e.stopPropagation()}>
                 <div className="flex items-center justify-between p-4 border-b border-teal-400/20">
                     <div className="flex items-center space-x-3">
                         <ScaleIcon className="w-6 h-6 text-teal-300"/>
@@ -57,28 +33,24 @@ export const GovernanceReportModal: React.FC<GovernanceReportModalProps> = ({ is
                     </div>
                     <button onClick={onClose} className="text-gray-400 hover:text-white transition-colors text-2xl font-light">&times;</button>
                 </div>
-                
                 <div className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <StatCard title="Invariantes Éticos" value="128 / 128" color="text-green-400" />
-                        <StatCard title="Sensibilidade de Viés" value="Δ > 0.94" color="text-green-400" />
-                        <StatCard title="Violações (Nível Γ)" value="0" color="text-green-400" />
+                        <StatCard title="Invariantes Éticos" value="N/D" color="text-gray-400" />
+                        <StatCard title="Sensibilidade de Viés" value="N/D" color="text-gray-400" />
+                        <StatCard title="Violações (Nível Γ)" value="N/D" color="text-gray-400" />
                     </div>
-
-                     <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700/50">
-                        <h3 className="font-semibold text-white mb-2 flex items-center"><ShieldCheckIcon className="w-5 h-5 mr-2 text-green-400"/> Status de Conformidade</h3>
-                        <div className="flex items-center text-green-300">
+                    <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700/50">
+                        <h3 className="font-semibold text-white mb-2 flex items-center"><ShieldCheckIcon className="w-5 h-5 mr-2 text-gray-400"/> Status de Conformidade</h3>
+                        <div className="flex items-center text-gray-300">
                             <CheckIcon className="w-6 h-6 mr-2"/>
-                            <p className="text-lg">Plenamente Conforme com Atos EU AI e IA Segura</p>
+                            <p className="text-lg">Não verificado — não há executor/artefato de auditoria conectado a este painel.</p>
                         </div>
                     </div>
-
-                     <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700/50 font-mono-code text-sm">
+                    <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700/50 font-mono-code text-sm">
                         <p className="text-gray-400 mb-1">Assinatura de Entropia (Auditoria):</p>
-                        <p className="text-teal-300 break-all">{entropySignature}</p>
+                        <p className="text-gray-300 break-all">NÃO DISPONÍVEL — nenhum artefato de auditoria assinado foi fornecido pelo runtime.</p>
                     </div>
                 </div>
-
                 <div className="p-3 border-t border-teal-400/20 text-xs text-center text-gray-500 font-mono-code">
                     RELATÓRIO GERADO: {new Date().toISOString()}
                 </div>
