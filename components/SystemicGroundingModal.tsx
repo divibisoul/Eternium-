@@ -30,7 +30,7 @@ const newInstruction = `Função: Motor de Síntese Cognitiva. Tarefa: Processar
 const SystemicGroundingModal: React.FC<SystemicGroundingModalProps> = ({ isOpen, onClose, critique }) => {
     void onClose;
     void critique;
-    const phase = 0;
+    const phase: number = 0;
 
     if (!isOpen) return null;
 
