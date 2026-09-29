@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
     ShieldCheckIcon,
     BrainChipIcon,
@@ -54,34 +54,9 @@ const StepIndicator: React.FC<{
 
 
 const EnforcementPipelineModal: React.FC<EnforcementPipelineModalProps> = ({ isOpen, prompt, onClose, onComplete }) => {
-    const [phase, setPhase] = useState(-1);
-
-    useEffect(() => {
-        if (!isOpen) {
-            setPhase(-1);
-            return;
-        }
-
-        let currentPhase = 0;
-        const processNextPhase = () => {
-            if (currentPhase < steps.length) {
-                setPhase(currentPhase);
-                setTimeout(() => {
-                    currentPhase++;
-                    processNextPhase();
-                }, steps[currentPhase].duration);
-            } else {
-                setPhase(currentPhase); // Mark all as done
-                setTimeout(() => {
-                    onClose();
-                    onComplete(prompt);
-                }, 1000);
-            }
-        };
-        
-        const timer = setTimeout(processNextPhase, 100);
-        return () => clearTimeout(timer);
-    }, [isOpen, onClose, onComplete, prompt]);
+    void onClose;
+    void onComplete;
+    const phase = -1;
 
     if (!isOpen) return null;
 
@@ -92,7 +67,7 @@ const EnforcementPipelineModal: React.FC<EnforcementPipelineModalProps> = ({ isO
                     <ShieldCheckIcon className="w-10 h-10 text-cyan-300"/>
                     <h2 className="text-3xl font-bold text-cyan-300">Pipeline de Execução</h2>
                 </div>
-                <p className="text-gray-400 mb-6">Processando diretiva através de camadas de execução obrigatórias...</p>
+                <p className="text-yellow-300 mb-6">UNMEASURED / BLOCKED — nenhum executor runtime está vinculado a esta interface. O prompt não será concluído automaticamente.</p>
                  <div className="bg-gray-900/50 border border-cyan-500/30 rounded-lg p-6 w-full space-y-3">
                     {steps.map((step, index) => (
                         <StepIndicator
