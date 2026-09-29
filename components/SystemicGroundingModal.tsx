@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { DocumentMagnifyingGlassIcon, CodeBracketIcon, ShieldCheckIcon, CheckIcon } from './icons.tsx';
 
 interface SystemicGroundingModalProps {
@@ -28,22 +28,9 @@ const newInstruction = `Função: Motor de Síntese Cognitiva. Tarefa: Processar
 
 
 const SystemicGroundingModal: React.FC<SystemicGroundingModalProps> = ({ isOpen, onClose, critique }) => {
-    const [phase, setPhase] = useState(0); // 0: init, 1: Analysis, 2: Correction, 3: Validation, 4: Complete
-
-    useEffect(() => {
-        if (!isOpen) {
-            setPhase(0);
-            return;
-        }
-        const timers: ReturnType<typeof setTimeout>[] = [
-            setTimeout(() => setPhase(1), 500),
-            setTimeout(() => setPhase(2), 3000),
-            setTimeout(() => setPhase(3), 6000),
-            setTimeout(() => setPhase(4), 8000),
-            setTimeout(onClose, 10000),
-        ];
-        return () => timers.forEach(timer => clearTimeout(timer));
-    }, [isOpen, onClose]);
+    void onClose;
+    void critique;
+    const phase = 0;
 
     if (!isOpen) return null;
 
@@ -119,6 +106,9 @@ const SystemicGroundingModal: React.FC<SystemicGroundingModalProps> = ({ isOpen,
                     <PhaseIndicator title="Concluído" phase={4} currentPhase={phase} />
                 </div>
                 <div className="min-h-[200px] bg-black/30 p-4 rounded-md flex items-center justify-center">
+                   <div className="w-full bg-gray-800/70 border border-yellow-500/30 p-4 rounded-lg text-yellow-200 text-sm">
+                     <strong>UNMEASURED / BLOCKED:</strong> executor de aterramento sistêmico não vinculado; nenhum módulo foi corrigido ou validado por este painel.
+                   </div>
                    {renderContent()}
                 </div>
             </div>
