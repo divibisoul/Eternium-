@@ -39,7 +39,7 @@ const ERUAuditModal: React.FC<ERUAuditModalProps> = ({ isOpen, onClose, progress
 
     if (!isOpen) return null;
     
-    const isComplete = progress > phases.length;
+    const isComplete = false;
     const currentPhaseData = phases[progress - 1];
 
     return (
@@ -61,7 +61,7 @@ const ERUAuditModal: React.FC<ERUAuditModalProps> = ({ isOpen, onClose, progress
                     <AtomIcon className="w-10 h-10 text-cyan-300" />
                     <h2 className="text-3xl font-bold text-cyan-300">Auditoria da Equação Reversa Universal</h2>
                 </div>
-                <p className="text-gray-400 mb-8">Protocolo de verificação de integridade do núcleo em andamento...</p>
+                <p className="text-yellow-300 mb-8">UNMEASURED / BLOCKED — este painel não possui executor ERU runtime vinculado.</p>
                 
                 <div className="relative flex items-start justify-center w-full px-8 mb-8">
                     {phases.map((phase, index) => (
@@ -78,7 +78,7 @@ const ERUAuditModal: React.FC<ERUAuditModalProps> = ({ isOpen, onClose, progress
                     {isComplete ? (
                         <span className="text-green-300 font-bold flex items-center"><CheckIcon className="w-6 h-6 mr-2"/>Auditoria concluída. Sistema Nominal.</span>
                     ) : (
-                        <span>{currentPhaseData?.log || "Inicializando auditoria..."}</span>
+                        <span>{currentPhaseData?.log || "Nenhuma fase de auditoria executada; somente o roteiro está preservado."}</span>
                     )}
                 </div>
             </div>
