@@ -45,7 +45,7 @@ const CSAEModal: React.FC<CSAEModalProps> = ({ isOpen, onClose, operation }) => 
                 </div>
                 {isComplete && (
                      <div className="mt-4 p-3 bg-green-900/50 border border-green-500 rounded-lg text-center">
-                        <p className="font-bold text-green-300">Reconfiguração Concluída. Pertencimento computacional otimizado.</p>
+                        <p className="font-bold text-green-300">Executor reportou DONE.</p><p className="text-xs text-gray-400 mt-1">Ganhos e reconfiguração só podem ser declarados com artefato/telemetria correspondente.</p>
                     </div>
                 )}
             </div>
