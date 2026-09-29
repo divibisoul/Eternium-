@@ -26,7 +26,7 @@ const FlowLine: React.FC<{ active: boolean, delay: number }> = ({ active, delay 
 );
 
 export const UnifiedCognitionModal: React.FC<UnifiedCognitionModalProps> = ({ isOpen, userPrompt }) => {
-    const step = 0;
+    const step: number = 0;
 
     if (!isOpen) return null;
 
