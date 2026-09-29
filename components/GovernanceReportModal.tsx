@@ -19,14 +19,8 @@ export const GovernanceReportModal: React.FC<GovernanceReportModalProps> = ({ is
 
     useEffect(() => {
         if (isOpen) {
-            // Generate a fake entropy signature on open
-            const randomData = Array.from({ length: 32 }, () => Math.floor(Math.random() * 256));
-            const buffer = new Uint8Array(randomData);
-            window.crypto.subtle.digest('SHA-256', buffer).then(hashBuffer => {
-                const hashArray = Array.from(new Uint8Array(hashBuffer));
-                const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-                setEntropySignature(hashHex.substring(0, 32) + '...');
-            });
+            // Nenhuma assinatura é inventada. Uma assinatura de auditoria deve vir da proveniência SARA.
+            setEntropySignature('NÃO DISPONÍVEL — sem proveniência de auditoria SARA');
         }
     }, [isOpen]);
 
@@ -60,16 +54,16 @@ export const GovernanceReportModal: React.FC<GovernanceReportModalProps> = ({ is
                 
                 <div className="p-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <StatCard title="Invariantes Éticos" value="128 / 128" color="text-green-400" />
-                        <StatCard title="Sensibilidade de Viés" value="Δ > 0.94" color="text-green-400" />
-                        <StatCard title="Violações (Nível Γ)" value="0" color="text-green-400" />
+                        <StatCard title="Invariantes Éticos" value="não mensurado" color="text-gray-400" />
+                        <StatCard title="Sensibilidade de Viés" value="não mensurado" color="text-gray-400" />
+                        <StatCard title="Violações (Nível Γ)" value="não mensurado" color="text-gray-400" />
                     </div>
 
                      <div className="bg-gray-800/70 p-4 rounded-lg border border-gray-700/50">
                         <h3 className="font-semibold text-white mb-2 flex items-center"><ShieldCheckIcon className="w-5 h-5 mr-2 text-green-400"/> Status de Conformidade</h3>
-                        <div className="flex items-center text-green-300">
-                            <CheckIcon className="w-6 h-6 mr-2"/>
-                            <p className="text-lg">Plenamente Conforme com Atos EU AI e IA Segura</p>
+                        <div className="flex items-center text-gray-300">
+                            <ShieldCheckIcon className="w-6 h-6 mr-2"/>
+                            <p className="text-lg">Conformidade não determinada — requer auditoria verificável.</p>
                         </div>
                     </div>
 

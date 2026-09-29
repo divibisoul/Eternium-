@@ -15,22 +15,8 @@ const MetricDisplay: React.FC<{ label: string; value: number; unit: string; colo
 );
 
 export const BNCv2Monitor: React.FC = () => {
-    const [metrics, setMetrics] = useState({
-        density: 75 + Math.random() * 10,
-        plasticity: 40 + Math.random() * 15,
-        modulation: 60 + Math.random() * 20,
-    });
+    const [metrics] = useState({ density: 0, plasticity: 0, modulation: 0 });
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setMetrics(prev => ({
-                density: Math.max(70, Math.min(98, prev.density + (Math.random() - 0.5) * 2)),
-                plasticity: Math.max(20, Math.min(95, prev.plasticity + (Math.random() - 0.45) * 5)),
-                modulation: Math.max(50, Math.min(99, prev.modulation + (Math.random() - 0.5) * 3)),
-            }));
-        }, 1500);
-        return () => clearInterval(interval);
-    }, []);
 
     return (
         <div className="bg-gray-800/80 p-4 rounded-lg border border-purple-500/30 mb-4 animate-fade-in">
@@ -45,7 +31,7 @@ export const BNCv2Monitor: React.FC = () => {
                 <QuantumConnectomeIcon className="w-8 h-8 text-purple-400 mr-3"/>
                 <div>
                     <h4 className="text-md font-bold text-purple-300">Monitor BNCv2</h4>
-                    <p className="text-xs text-gray-400">Estado Operacional do Núcleo Biomórfico</p>
+                    <p className="text-xs text-gray-400">Métricas dependentes de backend biomórfico — não mensuradas nesta camada.</p>
                 </div>
             </div>
             <div className="space-y-4">

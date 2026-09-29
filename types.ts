@@ -189,6 +189,7 @@ export enum OperationType {
 }
 
 export enum OperationStatus {
+    EXECUTION_REQUIRED = 'EXECUTION_REQUIRED',
     IN_PROGRESS = 'IN_PROGRESS',
     DONE = 'DONE',
 }

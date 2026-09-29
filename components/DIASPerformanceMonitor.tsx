@@ -19,26 +19,14 @@ const strategies = [
 ];
 
 const DIASPerformanceMonitor: React.FC = () => {
-    const [metrics, setMetrics] = useState({
-        latency: 180 + Math.random() * 50,
-        cpu: 60 + Math.random() * 15,
-        ethicalScore: 99.5 + Math.random() * 0.5,
+    const [metrics] = useState({
+        latency: 0,
+        cpu: 0,
+        ethicalScore: 0,
     });
-    const [strategyIndex, setStrategyIndex] = useState(3);
+    const [strategyIndex] = useState(3);
+    const currentStrategy = { text: 'Aguardando métricas observadas', color: 'text-gray-400' };
 
-    useEffect(() => {
-        const interval = setInterval(() => {
-            setMetrics({
-                latency: Math.max(50, 180 + (Math.random() - 0.5) * 150),
-                cpu: Math.max(20, 60 + (Math.random() - 0.5) * 50),
-                ethicalScore: Math.min(100, 99.5 + (Math.random() - 0.4) * 0.5),
-            });
-            setStrategyIndex(Math.floor(Math.random() * strategies.length));
-        }, 3000);
-        return () => clearInterval(interval);
-    }, []);
-    
-    const currentStrategy = strategies[strategyIndex];
 
     return (
         <div className="bg-gray-800/80 p-4 rounded-lg border border-orange-500/30 mb-4 animate-fade-in">
