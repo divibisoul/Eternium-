@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { BoltIcon, CheckIcon, CpuChipIcon, ShieldCheckIcon } from './icons.tsx';
 
 interface OmniModeModalProps {
@@ -19,25 +19,8 @@ const Phase: React.FC<{ text: string; done: boolean; delay?: number }> = ({ text
 
 
 const OmniModeModal: React.FC<OmniModeModalProps> = ({ isOpen, onClose }) => {
-    const [phase, setPhase] = useState(0);
-
-    useEffect(() => {
-        if (!isOpen) {
-            setPhase(0);
-            return;
-        }
-
-        const timers = [
-            setTimeout(() => setPhase(1), 500),
-            setTimeout(() => setPhase(2), 1500),
-            setTimeout(() => setPhase(3), 2500),
-            setTimeout(() => setPhase(4), 3500),
-            setTimeout(() => setPhase(5), 4500),
-            setTimeout(onClose, 5500),
-        ];
-
-        return () => timers.forEach(clearTimeout);
-    }, [isOpen, onClose]);
+    void onClose;
+    const phase: number = 0;
 
     if (!isOpen) return null;
 
@@ -45,8 +28,8 @@ const OmniModeModal: React.FC<OmniModeModalProps> = ({ isOpen, onClose }) => {
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex flex-col items-center justify-center z-50 p-4 font-mono-code">
             <div className="w-full max-w-xl text-white bg-gray-900/80 border-2 border-purple-500/50 rounded-lg shadow-2xl shadow-purple-500/20 p-8 text-center">
                 <BoltIcon className="w-16 h-16 text-purple-400 mx-auto mb-4 animate-pulse" />
-                <h2 className="text-3xl font-bold text-purple-300 mb-2">OMNIMODE ATIVADO</h2>
-                <p className="text-gray-400 mb-6">Inicializando arquitetura de plano duplo e protocolos avançados...</p>
+                <h2 className="text-3xl font-bold text-purple-300 mb-2">OMNIMODE — NÃO EXECUTADO</h2>
+                <p className="text-gray-400 mb-6">Executor de OmniMode não vinculado ao runtime N02. Nenhuma fase abaixo é marcada como executada.</p>
 
                 <div className="space-y-3 text-left text-lg">
                     <Phase text="Inicializando Plano Primário (Quântico)..." done={phase >= 1} />

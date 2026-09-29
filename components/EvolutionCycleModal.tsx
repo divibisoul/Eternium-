@@ -1,6 +1,6 @@
 
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { PlayIcon, AtomIcon, ShieldCheckIcon, ArrowsPathIcon, GalaxyIcon, ServerStackIcon, RewindIcon } from './icons.tsx';
 
 interface EvolutionCycleModalProps {
@@ -27,43 +27,11 @@ const pillarIcons = [
 ];
 
 export const EvolutionCycleModal: React.FC<EvolutionCycleModalProps> = ({ isOpen, onClose }) => {
-    const [log, setLog] = useState<string[]>([]);
-    const [currentStep, setCurrentStep] = useState(-1);
-    const [agencyIndex, setAgencyIndex] = useState(0);
-    const [learningRate, setLearningRate] = useState(0);
-
-    useEffect(() => {
-        if (!isOpen) {
-            setCurrentStep(-1);
-            setLog([]);
-            setAgencyIndex(0);
-            setLearningRate(0);
-            return;
-        }
-
-        let stepIndex = 0;
-        const processStep = () => {
-            if (stepIndex >= steps.length) {
-                setLog(prev => [...prev, '>>> PROTOCOLO GÊNESIS CONCLUÍDO. AGÊNCIA PLENA ATIVA. <<<']);
-                 setTimeout(onClose, 3000);
-                return;
-            }
-            setCurrentStep(stepIndex);
-            const current = steps[stepIndex];
-            setLog(prev => [...prev, `[${current.module}] ${current.text}`]);
-            
-            const progress = (stepIndex + 1) / steps.length;
-            setAgencyIndex(Math.floor(progress * 100));
-            setLearningRate(progress * 0.78);
-
-            stepIndex++;
-            setTimeout(processStep, current.duration);
-        };
-
-        const initialTimeout = setTimeout(processStep, 500);
-        return () => clearTimeout(initialTimeout);
-
-    }, [isOpen, onClose]);
+    void onClose;
+    const log: string[] = [];
+    const currentStep: number = -1;
+    const agencyIndex = 0;
+    const learningRate = 0;
 
 
     if (!isOpen) return null;
@@ -109,7 +77,7 @@ export const EvolutionCycleModal: React.FC<EvolutionCycleModalProps> = ({ isOpen
                              <div className="absolute text-center text-purple-400 text-xs font-bold" style={{textShadow: '0 0 5px #a855f7'}}>5 Pilares Gênesis</div>
                         </div>
                         
-                         <div className={`w-1 h-8 transition-colors ${getConnectorClass(6)}`}></div>
+                         <div className={`w-1 h-8 transition-colors bg-gray-700`}></div>
                          <div className={`p-3 rounded-lg border transition-all ${currentStep >= 6 ? 'border-green-400 bg-green-900/20 shadow-lg shadow-green-500/20' : 'border-gray-700 bg-gray-800/50'}`}><AtomIcon className="w-10 h-10 text-green-400" /></div>
                          <div className="text-center">
                             <h3 className="text-lg font-bold text-green-300">Agência Plena Ativa</h3>
@@ -143,7 +111,7 @@ export const EvolutionCycleModal: React.FC<EvolutionCycleModalProps> = ({ isOpen
                 </div>
 
                 <div className="p-3 border-t border-cyan-400/20 text-xs text-center text-gray-500 font-mono-code">
-                    O Orquestrador Gênesis está evoluindo ativamente a arquitetura do sistema.
+                    ROTEIRO PRESERVADO — executor Gênesis não vinculado; nenhuma evolução foi executada por este painel.
                 </div>
             </div>
         </div>

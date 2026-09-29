@@ -1,50 +1,79 @@
-
 import { useEffect } from 'react';
 import { AuditEventType } from '../types.ts';
 
-const BOOT_TIMEOUT = 10000; // 10 segundos
+const BOOT_TIMEOUT = 10000;
+
+type RuntimeStatus = {
+  nucleus: 'N02';
+  declaredCapabilities: string[];
+  executableCapabilities: string[];
+  agents: Array<{ id: string; capabilities: string[] }>;
+  executionCoverage: { declared: number; executable: number; ratio: number };
+};
 
 /**
- * Hook para gerenciar o processo de inicialização silenciosa do sistema em segundo plano.
- * Não retorna nenhum estado e não bloqueia a renderização da UI.
- * Se a inicialização falhar (por timeout ou erro), registra um erro crítico
- * que acionará o sistema de remediação ASASF.
- * @param logEvent - Função do hook useAuditSystem para registrar eventos.
+ * Boot orchestration is evidence-driven. It probes the actual N02 server runtime
+ * instead of completing local timers and calling that "online".
  */
 export const useSystemOrchestrator = (
-    logEvent: (type: AuditEventType, message: string, level: 'info' | 'warn' | 'error') => void
-) => {  
+  logEvent: (type: AuditEventType, message: string, level: 'info' | 'warn' | 'error') => void,
+) => {
   useEffect(() => {
-    // Este efeito é executado apenas uma vez na montagem do aplicativo.
-    
-    const initializeSystem = async (): Promise<void> => {
-      // Simula a inicialização assíncrona de vários módulos em paralelo.
-      const moduleInitializers = [
-        new Promise(resolve => setTimeout(resolve, 1000)), // Simula NeuroLinguistic
-        new Promise(resolve => setTimeout(resolve, 1500)), // Simula QuantumMemory
-        new Promise(resolve => setTimeout(resolve, 500)),  // Simula CognitiveCore
-      ];
-      await Promise.all(moduleInitializers);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), BOOT_TIMEOUT);
+
+    const probeRuntime = async () => {
+      try {
+        const response = await fetch('/api/n02-runtime-status', {
+          method: 'GET',
+          headers: { accept: 'application/json' },
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+
+        const body = await response.json() as Partial<RuntimeStatus> & { error?: string };
+        if (!response.ok) throw new Error(body.error || 'N02_RUNTIME_STATUS_HTTP_' + response.status);
+
+        const executable = Array.isArray(body.executableCapabilities) ? body.executableCapabilities.length : -1;
+        const declared = Array.isArray(body.declaredCapabilities) ? body.declaredCapabilities.length : -1;
+        const agents = Array.isArray(body.agents) ? body.agents.length : -1;
+
+        if (
+          body.nucleus !== 'N02' ||
+          executable < 0 ||
+          declared < 0 ||
+          agents < 0 ||
+          !body.executionCoverage ||
+          typeof body.executionCoverage.ratio !== 'number' ||
+          !Number.isFinite(body.executionCoverage.ratio)
+        ) {
+          throw new Error('N02_RUNTIME_STATUS_INVALID');
+        }
+
+        logEvent(
+          AuditEventType.SYSTEM_INIT,
+          'N02 runtime verificado por endpoint real: ' +
+            executable + '/' + declared + ' capacidades executáveis; agentes=' + agents +
+            '; cobertura=' + body.executionCoverage.ratio.toFixed(3) + '.',
+          'info',
+        );
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        const level = message.includes('AbortError') ? 'warn' : 'warn';
+        logEvent(
+          AuditEventType.SYSTEM_INIT,
+          'N02 runtime não mensurado neste cliente: ' + message + '. Nenhum estado online foi inferido.',
+          level,
+        );
+      } finally {
+        clearTimeout(timer);
+      }
     };
 
-    const bootProcess = initializeSystem();
-    const timeoutPromise = new Promise((_, reject) => 
-      setTimeout(() => reject(new Error('Timeout de inicialização do sistema')), BOOT_TIMEOUT)
-    );
-
-    Promise.race([bootProcess, timeoutPromise])
-      .then(() => {
-        // Sucesso. O sistema está online. Nenhuma ação na UI é necessária.
-        // O processo foi silencioso, conforme solicitado.
-      })
-      .catch((error) => {
-        // Falha. Registra um erro crítico que ativará o ASASFPanel.
-        console.error("AGI_BOOT_FAILURE:", error);
-        logEvent(AuditEventType.ERROR_CRITICAL, 'Falha crítica na inicialização do núcleo AGI.', 'error');
-      });
-      
-  // A lista de dependências está vazia para garantir que este processo de boot seja executado apenas uma vez.
-  // A função logEvent é estável (definida com useCallback no hook de origem).
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    void probeRuntime();
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [logEvent]);
 };

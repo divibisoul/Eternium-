@@ -1,5 +1,5 @@
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { UserIcon, BrainChipIcon, BeakerIcon, CpuChipIcon, QuantumConnectomeIcon, ShieldCheckIcon, GalaxyIcon } from '../icons.tsx';
 
 interface UnifiedCognitionModalProps {
@@ -26,23 +26,7 @@ const FlowLine: React.FC<{ active: boolean, delay: number }> = ({ active, delay 
 );
 
 export const UnifiedCognitionModal: React.FC<UnifiedCognitionModalProps> = ({ isOpen, userPrompt }) => {
-    const [step, setStep] = useState(0);
-
-    useEffect(() => {
-        if (!isOpen) {
-            setStep(0);
-            return;
-        }
-
-        const timers = [
-            setTimeout(() => setStep(1), 500),   // Perception
-            setTimeout(() => setStep(2), 1500),  // Reasoning Cores light up
-            setTimeout(() => setStep(3), 2500),  // Reflection
-            setTimeout(() => setStep(4), 3500),  // Synthesis
-        ];
-
-        return () => timers.forEach(clearTimeout);
-    }, [isOpen]);
+    const step: number = 0;
 
     if (!isOpen) return null;
 
@@ -66,7 +50,9 @@ export const UnifiedCognitionModal: React.FC<UnifiedCognitionModalProps> = ({ is
                     <p className="text-lg font-semibold text-white mt-1 p-2 bg-gray-800/50 rounded-md">"{userPrompt}"</p>
                 </div>
                 
-                <FlowLine active={step >= 1} delay={500} />
+                <div className="w-full max-w-xl bg-gray-800/70 border border-yellow-500/30 rounded-lg p-3 text-sm text-yellow-200">UNMEASURED / BLOCKED — a composição cognitiva não é considerada executada sem eventos reais de percepção, raciocínio, reflexão e síntese.</div>
+
+                <FlowLine active={false} delay={0} />
 
                 {/* Perception */}
                 <div className={`flex flex-col items-center transition-opacity duration-500 ${step >= 1 ? 'opacity-100' : 'opacity-0'}`}>

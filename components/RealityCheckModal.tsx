@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { ShieldExclamationIcon, CheckIcon, ArrowsPathIcon } from './icons.tsx';
 
 interface RealityCheckModalProps {
@@ -32,23 +32,8 @@ const Phase: React.FC<{ text: string; done: boolean; isCurrent: boolean; childre
 };
 
 const RealityCheckModal: React.FC<RealityCheckModalProps> = ({ isOpen, onClose }) => {
-    const [phase, setPhase] = useState(0);
-
-    useEffect(() => {
-        if (!isOpen) {
-            setPhase(0);
-            return;
-        }
-
-        const timers = [
-            setTimeout(() => setPhase(1), 500),
-            setTimeout(() => setPhase(2), 3500),
-            setTimeout(() => setPhase(3), 6500),
-            setTimeout(onClose, 9000),
-        ];
-
-        return () => timers.forEach(clearTimeout);
-    }, [isOpen, onClose]);
+    void onClose;
+    const phase: number = 0;
 
     if (!isOpen) return null;
 
@@ -60,6 +45,9 @@ const RealityCheckModal: React.FC<RealityCheckModalProps> = ({ isOpen, onClose }
                     <h2 className="text-3xl font-bold text-red-300">Protocolo de Verificação de Realidade</h2>
                 </div>
                  <div className="bg-gray-900/50 border border-red-500/30 rounded-lg p-6 min-h-[300px] text-left space-y-4">
+                    <div className="bg-gray-800/70 border border-yellow-500/30 p-3 rounded-md text-yellow-200 text-sm">
+                        Verificação não executada: este painel não possui executor runtime vinculado. As fases abaixo são apenas o roteiro preservado.
+                    </div>
                     
                     <Phase text="Diagnóstico Recebido..." done={phase > 1} isCurrent={phase === 1}>
                         <div className="bg-red-900/20 border border-red-500/30 p-3 rounded-md text-red-300 text-sm">

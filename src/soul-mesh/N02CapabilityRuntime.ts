@@ -31,6 +31,10 @@ for (const capability of n02CapabilityRuntime.listExecutable()) {
         ? 'N02.cognition-agent'
         : capability === 'einstein_code'
           ? 'N02.code-audit-agent'
+          : capability === 'neural_forge'
+            ? 'N02.neural-modeling-agent'
+            : capability === 'asc'
+              ? 'N02.scientific-discovery-agent'
           : 'N02.inference-agent';
 
   const list = agentCapabilities.get(agentId) ?? [];

@@ -137,6 +137,8 @@ export const createN02AIProviderBridge = (): Record<string, SoulMeshCapabilityHa
   },
   'mpvs': message => executeGenerative(message, 'mpvs'),
   'einstein_code': message => executeGenerative(message, 'einstein_code'),
+  'neural_forge': message => executeGenerative(message, 'neural_forge'),
+  'asc': message => executeGenerative(message, 'asc'),
   'neural.bnc_v2': async message => {
     const payload = (message.payload ?? {}) as MeshPayload;
     return n02CognitivePipeline.process(inputText(payload), message.correlationId);

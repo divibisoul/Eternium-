@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { 
     BrainChipIcon,
     BeakerIcon,
@@ -22,24 +22,8 @@ const Phase: React.FC<{ title: string; currentPhase: number, phaseNumber: number
 );
 
 const CognitiveCalibrationModal: React.FC<CognitiveCalibrationModalProps> = ({ isOpen, onClose }) => {
-    const [phase, setPhase] = useState(0); // 0: init, 1: analysis, 2: integration, 3: calibration, 4: complete
-
-    useEffect(() => {
-        if (!isOpen) {
-            setPhase(0);
-            return;
-        }
-
-        const timers: ReturnType<typeof setTimeout>[] = [
-            setTimeout(() => setPhase(1), 500),
-            setTimeout(() => setPhase(2), 3500),
-            setTimeout(() => setPhase(3), 6500),
-            setTimeout(() => setPhase(4), 9500),
-            setTimeout(onClose, 12000),
-        ];
-        
-        return () => timers.forEach(clearTimeout);
-    }, [isOpen, onClose]);
+    void onClose;
+    const phase = 0;
 
 
     if (!isOpen) return null;
@@ -53,7 +37,7 @@ const CognitiveCalibrationModal: React.FC<CognitiveCalibrationModalProps> = ({ i
                 </div>
                  <div className="bg-gray-900/50 border border-yellow-500/30 rounded-lg p-6 min-h-[350px] flex items-center justify-center relative overflow-hidden">
                     
-                    {phase === 0 && <p className="text-gray-400">Análise técnica recebida. Iniciando recalibração...</p>}
+                    {phase === 0 && <p className="text-yellow-200 text-sm">UNMEASURED / BLOCKED — o executor de calibração não está vinculado; nenhuma recalibração foi executada.</p>}
                     
                     <Phase title="Análise da Falha" currentPhase={phase} phaseNumber={1}>
                         <div className="bg-red-900/20 border border-red-500/30 p-4 rounded-lg text-red-300 text-sm space-y-2 text-left">
