@@ -1,0 +1,35 @@
+name: N02 initial forensic audit
+on:
+  push:
+    branches:
+      - "feat/neural-canonical-parameters-2026-09-28"
+  pull_request:
+    branches: [main]
+    paths:
+      - "scripts/forensic-audit.cjs"
+      - "docs/forensics/n02-manifest.json"
+      - ".github/workflows/n02-forensic-audit.yml"
+  workflow_dispatch:
+permissions:
+  contents: read
+  pull-requests: read
+jobs:
+  forensic:
+    runs-on: ubuntu-22.04
+    env:
+      GH_TOKEN: ${{ github.token }}
+      FORENSIC_MANIFEST: docs/forensics/n02-manifest.json
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - name: Execute seven-source audit
+        run: node scripts/forensic-audit.cjs
+      - name: Validate report
+        run: test -s artifacts/forensic-audit-report.json
+      - name: Upload evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: n02-forensic-audit-report
+          path: artifacts/forensic-audit-report.json

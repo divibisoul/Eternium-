@@ -1,0 +1,14 @@
+{
+  "repository": "divibisoul/Eternium-",
+  "nucleus": "N02",
+  "targets": [
+    {"id":"inference","terms":["inference","ai.generate","conversation"],"paths":["app","lib","src"]},
+    {"id":"chatbot","terms":["chat","message","assistant"],"paths":["app","components","lib"]},
+    {"id":"tools","terms":["tool","tool-execution"],"paths":["app","lib","src"]},
+    {"id":"memory","terms":["memory","context"],"paths":["app","lib","src"]},
+    {"id":"artifacts","terms":["artifact","document"],"paths":["app","lib","src"]},
+    {"id":"streaming","terms":["stream","streaming"],"paths":["app","lib","src"]},
+    {"id":"providers","terms":["provider","model","gemini","openai"],"paths":["app","lib","src"]},
+    {"id":"capability-router","terms":["capability","router","SoulMesh"],"paths":["app","lib","src","scripts"]}
+  ]
+}
