@@ -18,6 +18,30 @@ test('N02 capability catalog does not confuse declaration with execution', () =>
   assert.equal(asc?.execution, 'executable');
 });
 
+test('expanded Gemini provider capabilities are executable in the canonical runtime', () => {
+  for (const capability of [
+    'gemini.text.generate',
+    'gemini.multimodal.generate',
+    'gemini.audio.transcribe',
+    'gemini.audio.analyze',
+    'gemini.speech.synthesize',
+  ]) {
+    assert.equal(canN02Handle(capability), true, `expected ${capability} to be executable`);
+    assert.equal(n02CapabilityRuntime.has(capability), true);
+  }
+
+  const catalog = getN02CapabilityCatalog();
+  for (const capability of [
+    'gemini.text.generate',
+    'gemini.multimodal.generate',
+    'gemini.audio.transcribe',
+    'gemini.audio.analyze',
+    'gemini.speech.synthesize',
+  ]) {
+    assert.equal(catalog.find(item => item.id === capability)?.execution, 'executable');
+  }
+});
+
 test('NeuralForge and ASC use dedicated agent boundaries', () => {
   const agents = n02AgentRegistry.list();
   assert.deepEqual(
