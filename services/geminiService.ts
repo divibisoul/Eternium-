@@ -114,15 +114,26 @@ function buildConfig(
           },
         };
       case 'google_maps':
-        return {
-          googleMaps: {
-            ...(options.googleMapsLatitude !== undefined ? { latitude: options.googleMapsLatitude } : {}),
-            ...(options.googleMapsLongitude !== undefined ? { longitude: options.googleMapsLongitude } : {}),
-          },
-        };
+        return { googleMaps: {} };
     }
   });
   if (tools.length > 0) config.tools = tools;
+  if (options.enableGoogleMaps && (
+    options.googleMapsLatitude !== undefined ||
+    options.googleMapsLongitude !== undefined
+  )) {
+    if (options.googleMapsLatitude === undefined || options.googleMapsLongitude === undefined) {
+      throw new Error('GEMINI_GOOGLE_MAPS_LAT_LONG_REQUIRED');
+    }
+    config.toolConfig = {
+      retrievalConfig: {
+        latLng: {
+          latitude: options.googleMapsLatitude,
+          longitude: options.googleMapsLongitude,
+        },
+      },
+    };
+  }
   return config;
 }
 
