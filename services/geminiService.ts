@@ -60,9 +60,28 @@ function normalizeProviderModel(value: string | undefined, fallback: string): st
   return normalized || fallback;
 }
 
+export type GeminiNativeTool = 'google_search' | 'code_execution';
+
+export function resolveGeminiNativeTools(options: {
+  useWebSearch?: boolean;
+  enableCodeExecution?: boolean;
+}): GeminiNativeTool[] {
+  const tools: GeminiNativeTool[] = [];
+  if (options.useWebSearch) tools.push('google_search');
+  if (options.enableCodeExecution ?? process.env.GEMINI_ENABLE_CODE_EXECUTION === 'true') {
+    tools.push('code_execution');
+  }
+  return tools;
+}
+
 function buildConfig(useWebSearch: boolean, systemInstruction: string): Record<string, unknown> {
   const config: Record<string, unknown> = { systemInstruction, temperature: 0.6 };
-  if (useWebSearch) config.tools = [{ googleSearch: {} }];
+  const nativeTools = resolveGeminiNativeTools({ useWebSearch });
+  if (nativeTools.length > 0) {
+    config.tools = nativeTools.map(tool =>
+      tool === 'google_search' ? { googleSearch: {} } : { codeExecution: {} },
+    );
+  }
   return config;
 }
 
