@@ -6,11 +6,17 @@ import { geminiRetryOptions, shouldFallbackGemini, withGeminiRetry } from "./gem
 import type { N02CognitivePipelineResult } from "../src/cognitive/N02CognitivePipeline";
 
 const getAiClient = () => {
-  if (!process.env.API_KEY) {
-    console.error("A variável de ambiente API_KEY não está definida.");
-    throw new Error('[FALHA DE INICIALIZAÇÃO] A chave da API do núcleo não foi configurada. Impossível estabelecer a conexão quântica.');
+  const apiKey = (
+    process.env.GEMINI_API_KEY
+    || process.env.GOOGLE_API_KEY
+    || process.env.API_KEY
+    || ''
+  ).trim();
+  if (!apiKey) {
+    console.error("Nenhuma chave Gemini configurada (GEMINI_API_KEY/GOOGLE_API_KEY/API_KEY).");
+    throw new Error('[FALHA DE INICIALIZAÇÃO] A chave da API Gemini não foi configurada.');
   }
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  return new GoogleGenAI({ apiKey });
 };
 
 const enforcementPreamble = `PREÂMBULO DE EXECUÇÃO OBRIGATÓRIA:
