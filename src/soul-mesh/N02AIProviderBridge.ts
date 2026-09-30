@@ -16,6 +16,12 @@ type MeshPayload = {
   mimeType?: string;
   imageBase64?: string;
   imageMimeType?: string;
+  url?: string;
+  fileSearchStoreNames?: string[];
+  fileSearchTopK?: number;
+  fileSearchMetadataFilter?: string;
+  latitude?: number;
+  longitude?: number;
 };
 
 const modes = new Set(Object.values(SystemAspect));
@@ -79,7 +85,7 @@ function normalizeContents(payload: MeshPayload): any[] {
   throw new Error('AI_CONTENTS_REQUIRED');
 }
 
-async function executeGenerative(message: SoulMeshMessage, forcedCapability?: string, enableCodeExecution = false, forceWebSearch = false) {
+async function executeGenerative(message: SoulMeshMessage, forcedCapability?: string, enableCodeExecution = false, forceWebSearch = false, nativeToolOptions: Parameters<typeof processUserDirective>[6] = {}) {
   const payload = (message.payload ?? {}) as MeshPayload;
   const context = await n02CognitivePipeline.process(inputText(payload), message.correlationId);
   const response = await processUserDirective(
@@ -90,6 +96,7 @@ async function executeGenerative(message: SoulMeshMessage, forcedCapability?: st
     Boolean(payload.isFullCognitionMode),
     context,
     enableCodeExecution,
+    nativeToolOptions,
   );
 
   return {
@@ -110,6 +117,29 @@ export const createN02AIProviderBridge = (): Record<string, SoulMeshCapabilityHa
   'ai.generate': executeGenerative,
   'gemini.google_search': message => executeGenerative(message, 'gemini.google_search', false, true),
   'gemini.code_execution': message => executeGenerative(message, 'gemini.code_execution', true),
+  'gemini.url_context': message => {
+    const payload = (message.payload ?? {}) as MeshPayload;
+    if (!payload.url?.trim()) throw new Error('GEMINI_URL_CONTEXT_URL_REQUIRED');
+    return executeGenerative(message, 'gemini.url_context', false, false, { enableUrlContext: true });
+  },
+  'gemini.file_search': message => {
+    const payload = (message.payload ?? {}) as MeshPayload;
+    const stores = Array.isArray(payload.fileSearchStoreNames) ? payload.fileSearchStoreNames.filter(value => typeof value === 'string' && value.trim()) : [];
+    if (stores.length === 0) throw new Error('GEMINI_FILE_SEARCH_STORE_REQUIRED');
+    return executeGenerative(message, 'gemini.file_search', false, false, {
+      fileSearchStoreNames: stores.slice(0, 16),
+      fileSearchTopK: payload.fileSearchTopK,
+      fileSearchMetadataFilter: payload.fileSearchMetadataFilter,
+    });
+  },
+  'gemini.google_maps': message => {
+    const payload = (message.payload ?? {}) as MeshPayload;
+    return executeGenerative(message, 'gemini.google_maps', false, false, {
+      enableGoogleMaps: true,
+      googleMapsLatitude: typeof payload.latitude === 'number' ? payload.latitude : undefined,
+      googleMapsLongitude: typeof payload.longitude === 'number' ? payload.longitude : undefined,
+    });
+  },
   'ai.multimodal': message => executeGenerative(message, 'mpvs'),
   'cognitive-processing': executeGenerative,
   'acai': async message => {
