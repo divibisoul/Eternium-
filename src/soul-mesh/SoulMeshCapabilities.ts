@@ -82,6 +82,26 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: false, owner: 'N02', context: ['execution', 'octacore'], tools: []
   },
   {
+    id: 'gemini.text.generate', version: '1.0', description: 'N02 Gemini text generation provider capability',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation'], tools: []
+  },
+  {
+    id: 'gemini.multimodal.generate', version: '1.0', description: 'N02 Gemini multimodal text generation over text/image/audio/video inputs',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'media'], tools: []
+  },
+  {
+    id: 'gemini.audio.transcribe', version: '1.0', description: 'N02 dedicated Gemini speech-to-text provider capability',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'audio'], tools: []
+  },
+  {
+    id: 'gemini.audio.analyze', version: '1.0', description: 'N02 Gemini audio understanding and structured analysis',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'audio'], tools: []
+  },
+  {
+    id: 'gemini.speech.synthesize', version: '1.0', description: 'N02 dedicated Gemini text-to-speech provider capability',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'audio'], tools: []
+  },
+  {
     id: 'mesh.describe', version: '1.0', description: 'N02 identity, capabilities, tools and transport discovery',
     request: true, response: true, events: false, owner: 'N02', context: [], tools: []
   },
