@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getN02CapabilityCatalog, canN02Handle } from './N02CapabilityCatalog';
-import { n02CapabilityRuntime, n02AgentRegistry } from './N02CapabilityRuntime';
+import { getN02CapabilityCatalog, canN02Handle } from './N02CapabilityCatalog.ts';
+import { n02CapabilityRuntime, n02AgentRegistry } from './N02CapabilityRuntime.ts';
 
 test('NeuralForge and ASC are declared and executable through the canonical runtime', () => {
   assert.equal(canN02Handle('neural_forge'), true);

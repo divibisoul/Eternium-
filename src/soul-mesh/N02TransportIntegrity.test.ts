@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { SoulMeshMemoryTransport } from './SoulMeshMemoryTransport';
-import { SoulMeshMultiplexTransport } from './SoulMeshMultiplexTransport';
+import { SoulMeshMemoryTransport } from './SoulMeshMemoryTransport.ts';
+import { SoulMeshMultiplexTransport } from './SoulMeshMultiplexTransport.ts';
 
 const message = {
   protocol: 'soul-mesh/1',
