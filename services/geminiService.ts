@@ -240,9 +240,7 @@ export async function synthesizeSpeech(
       responseModalities: ['AUDIO'],
       speechConfig: {
         voiceConfig: {
-          prebuiltVoiceConfig: {
-            voiceName: options.voice?.trim() || 'Kore',
-          },
+          voice: options.voice?.trim() || 'Kore',
         },
       },
     },
