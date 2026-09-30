@@ -129,7 +129,13 @@ async function generateDedicated(
 
 export async function generateGeminiText(
   text: string,
-  options: { systemInstruction?: string; model?: string; useWebSearch?: boolean } = {},
+  options: {
+    systemInstruction?: string;
+    model?: string;
+    useWebSearch?: boolean;
+    temperature?: number;
+    maxOutputTokens?: number;
+  } = {},
 ): Promise<string> {
   const input = text?.trim();
   if (!input) throw new Error('GEMINI_TEXT_INPUT_REQUIRED');
@@ -140,6 +146,18 @@ export async function generateGeminiText(
     'gemini-3.8-flash',
   );
   const config = buildConfig(Boolean(options.useWebSearch), options.systemInstruction?.trim() || baseSystemInstruction);
+  if (options.temperature !== undefined) {
+    if (!Number.isFinite(options.temperature) || options.temperature < 0 || options.temperature > 2) {
+      throw new Error('GEMINI_TEMPERATURE_INVALID');
+    }
+    config.temperature = options.temperature;
+  }
+  if (options.maxOutputTokens !== undefined) {
+    if (!Number.isInteger(options.maxOutputTokens) || options.maxOutputTokens < 1 || options.maxOutputTokens > 16_384) {
+      throw new Error('GEMINI_MAX_OUTPUT_TOKENS_INVALID');
+    }
+    config.maxOutputTokens = options.maxOutputTokens;
+  }
   const response = await generateDedicated(
     ai,
     model,
