@@ -1,3 +1,10 @@
+
+let synapticSequence = 0;
+
+function createFallbackSynapticId(): string {
+  synapticSequence += 1;
+  return `syn-${Date.now()}-${synapticSequence}`;
+}
 export interface LocalState {
   nucleusId: string;
   timestamp: number;
@@ -98,6 +105,6 @@ export class SynapticNodeBridge {
   }
 
   private createCorrelationId(): string {
-    return globalThis.crypto?.randomUUID?.() ?? `syn-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    return globalThis.crypto?.randomUUID?.() ?? createFallbackSynapticId();
   }
 }
