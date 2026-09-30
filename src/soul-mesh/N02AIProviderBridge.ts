@@ -20,6 +20,8 @@ type MeshPayload = {
   isFullCognitionMode?: boolean;
   input?: string;
   systemInstruction?: string;
+  temperature?: number;
+  maxOutputTokens?: number;
   audioBase64?: string;
   mimeType?: string;
   imageBase64?: string;
@@ -132,6 +134,8 @@ export const createN02AIProviderBridge = (): Record<string, SoulMeshCapabilityHa
       text: await generateGeminiText(text, {
         systemInstruction: payload.systemInstruction,
         useWebSearch: Boolean(payload.useWebSearch),
+        temperature: typeof payload.temperature === 'number' ? payload.temperature : undefined,
+        maxOutputTokens: typeof payload.maxOutputTokens === 'number' ? payload.maxOutputTokens : undefined,
       }),
     };
   },
