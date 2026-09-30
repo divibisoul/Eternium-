@@ -6,11 +6,17 @@ import { geminiRetryOptions, shouldFallbackGemini, withGeminiRetry } from "./gem
 import type { N02CognitivePipelineResult } from "../src/cognitive/N02CognitivePipeline";
 
 const getAiClient = () => {
-  if (!process.env.API_KEY) {
-    console.error("A variável de ambiente API_KEY não está definida.");
-    throw new Error('[FALHA DE INICIALIZAÇÃO] A chave da API do núcleo não foi configurada. Impossível estabelecer a conexão quântica.');
+  const apiKey = (
+    process.env.GEMINI_API_KEY
+    || process.env.GOOGLE_API_KEY
+    || process.env.API_KEY
+    || ''
+  ).trim();
+  if (!apiKey) {
+    console.error("Nenhuma chave Gemini configurada (GEMINI_API_KEY/GOOGLE_API_KEY/API_KEY).");
+    throw new Error('[FALHA DE INICIALIZAÇÃO] A chave da API Gemini não foi configurada.');
   }
-  return new GoogleGenAI({ apiKey: process.env.API_KEY });
+  return new GoogleGenAI({ apiKey });
 };
 
 const enforcementPreamble = `PREÂMBULO DE EXECUÇÃO OBRIGATÓRIA:
@@ -60,9 +66,74 @@ function normalizeProviderModel(value: string | undefined, fallback: string): st
   return normalized || fallback;
 }
 
-function buildConfig(useWebSearch: boolean, systemInstruction: string): Record<string, unknown> {
+export type GeminiNativeTool = 'google_search' | 'code_execution' | 'url_context' | 'file_search' | 'google_maps';
+
+export type GeminiNativeToolOptions = {
+  useWebSearch?: boolean;
+  enableCodeExecution?: boolean;
+  enableUrlContext?: boolean;
+  fileSearchStoreNames?: string[];
+  fileSearchTopK?: number;
+  fileSearchMetadataFilter?: string;
+  enableGoogleMaps?: boolean;
+  googleMapsLatitude?: number;
+  googleMapsLongitude?: number;
+};
+
+export function resolveGeminiNativeTools(options: GeminiNativeToolOptions): GeminiNativeTool[] {
+  const tools: GeminiNativeTool[] = [];
+  if (options.useWebSearch) tools.push('google_search');
+  if (options.enableCodeExecution === true) {
+    tools.push('code_execution');
+  }
+  if (options.enableUrlContext) tools.push('url_context');
+  if ((options.fileSearchStoreNames ?? []).length > 0) tools.push('file_search');
+  if (options.enableGoogleMaps) tools.push('google_maps');
+  return tools;
+}
+
+function buildConfig(
+  useWebSearch: boolean,
+  systemInstruction: string,
+  options: Omit<GeminiNativeToolOptions, 'useWebSearch'> = {},
+): Record<string, unknown> {
   const config: Record<string, unknown> = { systemInstruction, temperature: 0.6 };
-  if (useWebSearch) config.tools = [{ googleSearch: {} }];
+  const nativeOptions: GeminiNativeToolOptions = { useWebSearch, ...options };
+  const nativeTools = resolveGeminiNativeTools(nativeOptions);
+  const tools = nativeTools.map(tool => {
+    switch (tool) {
+      case 'google_search': return { googleSearch: {} };
+      case 'code_execution': return { codeExecution: {} };
+      case 'url_context': return { urlContext: {} };
+      case 'file_search':
+        return {
+          fileSearch: {
+            fileSearchStoreNames: options.fileSearchStoreNames,
+            ...(options.fileSearchTopK !== undefined ? { topK: options.fileSearchTopK } : {}),
+            ...(options.fileSearchMetadataFilter ? { metadataFilter: options.fileSearchMetadataFilter } : {}),
+          },
+        };
+      case 'google_maps':
+        return { googleMaps: {} };
+    }
+  });
+  if (tools.length > 0) config.tools = tools;
+  if (options.enableGoogleMaps && (
+    options.googleMapsLatitude !== undefined ||
+    options.googleMapsLongitude !== undefined
+  )) {
+    if (options.googleMapsLatitude === undefined || options.googleMapsLongitude === undefined) {
+      throw new Error('GEMINI_GOOGLE_MAPS_LAT_LONG_REQUIRED');
+    }
+    config.toolConfig = {
+      retrievalConfig: {
+        latLng: {
+          latitude: options.googleMapsLatitude,
+          longitude: options.googleMapsLongitude,
+        },
+      },
+    };
+  }
   return config;
 }
 
@@ -101,6 +172,8 @@ export const processUserDirective = async (
   deployedCapabilities: DeployedCapability[],
   isFullCognitionMode: boolean,
   cognitivePipeline?: N02CognitivePipelineResult,
+  enableCodeExecution = false,
+  nativeToolOptions: Omit<GeminiNativeToolOptions, 'useWebSearch'> = {},
 ): Promise<GenerateContentResponse> => {
   const ai = getAiClient();
 
@@ -122,7 +195,7 @@ export const processUserDirective = async (
     systemInstruction = `${systemInstruction}${pipelineInstruction}`;
   }
 
-  const config = buildConfig(useWebSearch, systemInstruction);
+  const config = buildConfig(useWebSearch, systemInstruction, { ...nativeToolOptions, enableCodeExecution });
   const primaryModel = normalizeProviderModel(process.env.GEMINI_MODEL, 'gemini-2.5-flash');
   const fallbackModel = normalizeProviderModel(process.env.GEMINI_FALLBACK_MODEL, 'gemini-2.5-flash-lite');
 
