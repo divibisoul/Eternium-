@@ -51,7 +51,7 @@ test('N02 memory transport waits for handler execution', async () => {
 
 test('N02 Soul task adapter fails closed until a real executor is registered', async () => {
   registerSoulTaskExecutor(null);
-  const unavailable = await executeSoulTask({ capability: 'reasoning', input: 'test' });
+  const unavailable = await executeSoulTask({ capability: 'agent-execution', input: 'test' });
   assert.equal(unavailable.success, false);
   assert.equal(unavailable.error?.code, 'EXECUTOR_NOT_CONNECTED');
 
@@ -60,7 +60,7 @@ test('N02 Soul task adapter fails closed until a real executor is registered', a
     executed: true,
   }));
 
-  const executed = await executeSoulTask({ capability: 'reasoning', input: 'test' });
+  const executed = await executeSoulTask({ capability: 'agent-execution', input: 'test' });
   assert.deepEqual(executed, {
     success: true,
     output: { capability: 'reasoning', executed: true },
