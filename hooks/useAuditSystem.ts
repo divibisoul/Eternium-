@@ -1,7 +1,6 @@
 
 import { useState, useCallback, useEffect } from 'react';
 
-import { useState, useCallback, useEffect } from 'react';
 import { AuditLogEntry, AuditEventType } from '../types.ts';
 
 let auditSequence = 0;
