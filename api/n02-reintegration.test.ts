@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import handler from './soul-mesh';
+import handler from './soul-mesh.ts';
 
 function invoke(body: unknown) {
   process.env.NODE_ENV = 'test';
