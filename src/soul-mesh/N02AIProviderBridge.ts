@@ -89,6 +89,7 @@ async function executeGenerative(message: SoulMeshMessage, forcedCapability?: st
     normalizeCapabilities(payload, forcedCapability),
     Boolean(payload.isFullCognitionMode),
     context,
+    enableCodeExecution,
   );
 
   return {
