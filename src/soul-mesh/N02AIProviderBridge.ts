@@ -1,6 +1,7 @@
 import {
   analyzeAudio,
   generateGeminiMultimodal,
+  generateGeminiText,
   processUserDirective,
   synthesizeSpeech,
   transcribeAudio,
@@ -18,6 +19,7 @@ type MeshPayload = {
   deployedCapabilities?: Array<{ id: string; name?: string; status?: 'Processando' | 'Otimizando' | 'Monitorando' | 'Estável'; metric?: number }>;
   isFullCognitionMode?: boolean;
   input?: string;
+  systemInstruction?: string;
   audioBase64?: string;
   mimeType?: string;
   imageBase64?: string;
@@ -128,12 +130,10 @@ export const createN02AIProviderBridge = (): Record<string, SoulMeshCapabilityHa
       nucleus: 'N02',
       capability: message.capability,
       correlationId: message.correlationId,
-      text: await import('../../services/geminiService.ts').then(module =>
-        module.generateGeminiText(text, {
-          systemInstruction: typeof payload.mode === 'string' ? payload.mode : undefined,
-          useWebSearch: Boolean(payload.useWebSearch),
-        }),
-      ),
+      text: await generateGeminiText(text, {
+        systemInstruction: payload.systemInstruction,
+        useWebSearch: Boolean(payload.useWebSearch),
+      }),
     };
   },
   'gemini.multimodal.generate': async message => {
