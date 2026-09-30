@@ -306,7 +306,8 @@ export const processUserDirective = async (
   }
 };
 
-export const transcribeAudio = async (audioBase64: string, mimeType: string): Promise<string> => {
+/** Preserved pre-expansion transcription path for legacy call sites. */
+export const legacyTranscribeAudio = async (audioBase64: string, mimeType: string): Promise<string> => {
   const ai = getAiClient();
   const contents = [{ parts: [
     { inlineData: { mimeType, data: audioBase64 } },
