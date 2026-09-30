@@ -79,13 +79,13 @@ function normalizeContents(payload: MeshPayload): any[] {
   throw new Error('AI_CONTENTS_REQUIRED');
 }
 
-async function executeGenerative(message: SoulMeshMessage, forcedCapability?: string, enableCodeExecution = false) {
+async function executeGenerative(message: SoulMeshMessage, forcedCapability?: string, enableCodeExecution = false, forceWebSearch = false) {
   const payload = (message.payload ?? {}) as MeshPayload;
   const context = await n02CognitivePipeline.process(inputText(payload), message.correlationId);
   const response = await processUserDirective(
     normalizeMode(payload.mode),
     normalizeContents(payload),
-    Boolean(payload.useWebSearch),
+    Boolean(payload.useWebSearch) || forceWebSearch,
     normalizeCapabilities(payload, forcedCapability),
     Boolean(payload.isFullCognitionMode),
     context,
@@ -108,7 +108,7 @@ async function executeGenerative(message: SoulMeshMessage, forcedCapability?: st
 
 export const createN02AIProviderBridge = (): Record<string, SoulMeshCapabilityHandler> => ({
   'ai.generate': executeGenerative,
-  'gemini.google_search': message => executeGenerative(message, 'gemini.google_search'),
+  'gemini.google_search': message => executeGenerative(message, 'gemini.google_search', false, true),
   'gemini.code_execution': message => executeGenerative(message, 'gemini.code_execution', true),
   'ai.multimodal': message => executeGenerative(message, 'mpvs'),
   'cognitive-processing': executeGenerative,
