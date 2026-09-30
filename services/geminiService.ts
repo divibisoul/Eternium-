@@ -94,6 +94,172 @@ async function generateWithFallback(
   }
 }
 
+export type GeminiAudioAnalysis = {
+  summary: string;
+  emotions?: Array<{ label: string; confidence?: number }>;
+  evidence?: string[];
+};
+
+export type GeminiSpeechAudio = {
+  mimeType: string;
+  data: string;
+  model: string;
+};
+
+function readResponseText(response: GenerateContentResponse, emptyCode: string): string {
+  const text = response.text?.trim();
+  if (!text) throw new Error(emptyCode);
+  return text;
+}
+
+async function generateDedicated(
+  ai: GoogleGenAI,
+  model: string,
+  contents: Content[],
+  config: Record<string, unknown> = {},
+): Promise<GenerateContentResponse> {
+  return generateWithFallback(
+    ai,
+    model,
+    normalizeProviderModel(process.env.GEMINI_FALLBACK_MODEL, 'gemini-3.5-flash-lite'),
+    contents,
+    config,
+  );
+}
+
+export async function generateGeminiText(
+  text: string,
+  options: { systemInstruction?: string; model?: string; useWebSearch?: boolean } = {},
+): Promise<string> {
+  const input = text?.trim();
+  if (!input) throw new Error('GEMINI_TEXT_INPUT_REQUIRED');
+
+  const ai = getAiClient();
+  const model = normalizeProviderModel(
+    options.model ?? process.env.GEMINI_MODEL,
+    'gemini-3.8-flash',
+  );
+  const config = buildConfig(Boolean(options.useWebSearch), options.systemInstruction?.trim() || baseSystemInstruction);
+  const response = await generateDedicated(
+    ai,
+    model,
+    [{ role: 'user', parts: [{ text: input }] }],
+    config,
+  );
+  return readResponseText(response, 'GEMINI_TEXT_EMPTY_RESPONSE');
+}
+
+export async function generateGeminiMultimodal(
+  contents: Content[],
+  options: { systemInstruction?: string; model?: string; useWebSearch?: boolean } = {},
+): Promise<string> {
+  if (!Array.isArray(contents) || contents.length === 0) {
+    throw new Error('GEMINI_MULTIMODAL_CONTENTS_REQUIRED');
+  }
+
+  const ai = getAiClient();
+  const model = normalizeProviderModel(
+    options.model ?? process.env.GEMINI_MULTIMODAL_MODEL ?? process.env.GEMINI_MODEL,
+    'gemini-3.8-flash',
+  );
+  const config = buildConfig(Boolean(options.useWebSearch), options.systemInstruction?.trim() || baseSystemInstruction);
+  const response = await generateDedicated(ai, model, contents, config);
+  return readResponseText(response, 'GEMINI_MULTIMODAL_EMPTY_RESPONSE');
+}
+
+export async function transcribeAudio(
+  audioBase64: string,
+  mimeType: string,
+): Promise<string> {
+  const audio = audioBase64?.trim();
+  const mime = mimeType?.trim();
+  if (!audio || !mime) throw new Error('GEMINI_TRANSCRIPTION_INPUT_REQUIRED');
+
+  const ai = getAiClient();
+  const model = normalizeProviderModel(
+    process.env.GEMINI_TRANSCRIBE_MODEL,
+    'gemini-3.5-transcribe',
+  );
+  const contents = [{
+    role: 'user',
+    parts: [
+      { inlineData: { mimeType: mime, data: audio } },
+      { text: 'Transcribe this audio faithfully. Preserve speaker turns and the source language when possible. Return only the transcript.' },
+    ],
+  }] as Content[];
+
+  const response = await generateDedicated(ai, model, contents);
+  return readResponseText(response, 'GEMINI_TRANSCRIPTION_EMPTY_RESPONSE');
+}
+
+export async function analyzeAudio(
+  audioBase64: string,
+  mimeType: string,
+  instruction = 'Analyze this audio. Return concise structured JSON with summary, emotions, confidence and evidence.',
+): Promise<string> {
+  const audio = audioBase64?.trim();
+  const mime = mimeType?.trim();
+  if (!audio || !mime) throw new Error('GEMINI_AUDIO_INPUT_REQUIRED');
+
+  const ai = getAiClient();
+  const model = normalizeProviderModel(
+    process.env.GEMINI_AUDIO_MODEL,
+    'gemini-3.8-flash',
+  );
+  const contents = [{
+    role: 'user',
+    parts: [
+      { inlineData: { mimeType: mime, data: audio } },
+      { text: instruction },
+    ],
+  }] as Content[];
+
+  const response = await generateDedicated(ai, model, contents, {
+    responseMimeType: 'application/json',
+  });
+  return readResponseText(response, 'GEMINI_AUDIO_ANALYSIS_EMPTY_RESPONSE');
+}
+
+export async function synthesizeSpeech(
+  text: string,
+  options: { voice?: string; model?: string } = {},
+): Promise<GeminiSpeechAudio> {
+  const input = text?.trim();
+  if (!input) throw new Error('GEMINI_TTS_TEXT_REQUIRED');
+
+  const ai = getAiClient();
+  const model = normalizeProviderModel(
+    options.model ?? process.env.GEMINI_TTS_MODEL,
+    'gemini-3.8-flash-tts',
+  );
+  const response = await generateDedicated(
+    ai,
+    model,
+    [{ role: 'user', parts: [{ text: input }] }],
+    {
+      responseModalities: ['AUDIO'],
+      speechConfig: {
+        voiceConfig: {
+          prebuiltVoiceConfig: {
+            voiceName: options.voice?.trim() || 'Kore',
+          },
+        },
+      },
+    },
+  );
+
+  const part = response.candidates?.[0]?.content?.parts?.find(
+    candidate => Boolean(candidate.inlineData?.data),
+  );
+  if (!part?.inlineData?.data) throw new Error('GEMINI_TTS_AUDIO_NOT_RETURNED');
+
+  return {
+    mimeType: part.inlineData.mimeType || 'audio/wav',
+    data: part.inlineData.data,
+    model,
+  };
+}
+
 export const processUserDirective = async (
   mode: SystemAspect,
   contents: Content[],
@@ -123,8 +289,8 @@ export const processUserDirective = async (
   }
 
   const config = buildConfig(useWebSearch, systemInstruction);
-  const primaryModel = normalizeProviderModel(process.env.GEMINI_MODEL, 'gemini-2.5-flash');
-  const fallbackModel = normalizeProviderModel(process.env.GEMINI_FALLBACK_MODEL, 'gemini-2.5-flash-lite');
+  const primaryModel = normalizeProviderModel(process.env.GEMINI_MODEL, 'gemini-3.8-flash');
+  const fallbackModel = normalizeProviderModel(process.env.GEMINI_FALLBACK_MODEL, 'gemini-3.5-flash-lite');
 
   try {
     return await generateWithFallback(ai, primaryModel, fallbackModel, contents, config);
