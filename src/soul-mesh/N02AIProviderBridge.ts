@@ -119,8 +119,14 @@ export const createN02AIProviderBridge = (): Record<string, SoulMeshCapabilityHa
   'gemini.code_execution': message => executeGenerative(message, 'gemini.code_execution', true),
   'gemini.url_context': message => {
     const payload = (message.payload ?? {}) as MeshPayload;
-    if (!payload.url?.trim()) throw new Error('GEMINI_URL_CONTEXT_URL_REQUIRED');
-    return executeGenerative(message, 'gemini.url_context', false, false, { enableUrlContext: true });
+    const url = payload.url?.trim();
+    if (!url) throw new Error('GEMINI_URL_CONTEXT_URL_REQUIRED');
+    const prompt = payload.text?.trim() || payload.input?.trim() || 'Use o contexto da URL fornecida.';
+    const enrichedMessage: SoulMeshMessage = {
+      ...message,
+      payload: { ...payload, text: prompt + '\n\nURL para contexto: ' + url },
+    };
+    return executeGenerative(enrichedMessage, 'gemini.url_context', false, false, { enableUrlContext: true });
   },
   'gemini.file_search': message => {
     const payload = (message.payload ?? {}) as MeshPayload;
