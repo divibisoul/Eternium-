@@ -41,6 +41,13 @@ export interface EterniumTaskResult {
   error?: { code: string; message: string };
 }
 
+export type SoulTaskExecutor = (task: EterniumTask) => Promise<unknown> | unknown;
+let soulTaskExecutor: SoulTaskExecutor | null = null;
+
+export function registerSoulTaskExecutor(executor: SoulTaskExecutor | null): void {
+  soulTaskExecutor = executor;
+}
+
 export const ETERNIUM_CAPABILITIES: EterniumCapability[] = [
   'reasoning',
   'planning',
@@ -119,14 +126,28 @@ export async function executeSoulTask(task: EterniumTask): Promise<EterniumTaskR
         );
         return { success: true, output: { capability: task.capability, text: response.text, context: task.context } };
       }
-      case 'agent-execution':
-        return {
-          success: false,
-          error: {
-            code: 'AGENT_EXECUTION_TARGET_REQUIRED',
-            message: 'Legacy task vocabulary does not identify a concrete N02-owned agent or capability.',
-          },
-        };
+      case 'agent-execution': {
+        if (!soulTaskExecutor) {
+          return {
+            success: false,
+            error: {
+              code: 'AGENT_EXECUTION_TARGET_REQUIRED',
+              message: 'Legacy task vocabulary does not identify a concrete N02-owned agent or capability.',
+            },
+          };
+        }
+        try {
+          return { success: true, output: await soulTaskExecutor(task) };
+        } catch (error) {
+          return {
+            success: false,
+            error: {
+              code: 'EXECUTION_FAILED',
+              message: error instanceof Error ? error.message : String(error),
+            },
+          };
+        }
+      }
       default:
         return { success: false, error: { code: 'CAPABILITY_UNAVAILABLE', message: task.capability } };
     }

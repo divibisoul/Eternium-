@@ -7,6 +7,7 @@ import type { SoulMeshCapabilityHandler } from './SoulMeshCapabilityExecutor';
 type MeshPayload = {
   contents?: unknown;
   text?: string;
+  perception?: unknown;
   mode?: string;
   useWebSearch?: boolean;
   deployedCapabilities?: Array<{ id: string; name?: string; status?: 'Processando' | 'Otimizando' | 'Monitorando' | 'Estável'; metric?: number }>;
@@ -82,6 +83,13 @@ function normalizeContents(payload: MeshPayload): any[] {
     return [{ role: 'user', parts: [{ text: payload.text.trim() }] }];
   }
 
+  if (payload.perception !== undefined) {
+    const text = typeof payload.perception === 'string'
+      ? payload.perception
+      : JSON.stringify(payload.perception);
+    if (text.trim()) return [{ role: 'user', parts: [{ text }] }];
+  }
+
   throw new Error('AI_CONTENTS_REQUIRED');
 }
 
@@ -148,6 +156,7 @@ export const createN02AIProviderBridge = (): Record<string, SoulMeshCapabilityHa
   },
   'ai.multimodal': message => executeGenerative(message, 'mpvs'),
   'cognitive-processing': executeGenerative,
+  'inference.reason': executeGenerative,
   'acai': async message => {
     const payload = (message.payload ?? {}) as MeshPayload;
     const audioBase64 = payload.audioBase64?.trim();

@@ -3,6 +3,7 @@ export type NucleusId='N01'|'N02'|'N03'|'N04'|'N05'|'N06'|'N07';
 export type MeshKind='request'|'response'|'event'|'error';
 export type SoulMeshMessage={protocol:'soul-mesh/1';contractVersion:'1.1.0';id:string;correlationId:string;source:NucleusId;target:NucleusId;kind:MeshKind;capability:string;payload:unknown;timestamp:number;nonce?:string;hmac?:string;meta?:{runtime?:string;transport?:string;encoding?:string;version?:string;nonce?:string;traceId?:string}};
 export type PeerDescription={nucleus:NucleusId;peers:NucleusId[];protocol:string;status:string;declaredCapabilities:string[];executableCapabilities:string[];transports:string[];channels?:{in:string[];out:string[]}};
+export type SuperGPUTask={id?:string;capability:string;payload:Record<string,unknown>;required?:boolean;timeout_ms?:number};
 const PEERS:Exclude<NucleusId,'N02'>[]=['N01','N03','N04','N05','N06','N07'];
 const env=(globalThis as any).process?.env ?? {};
 const urls:Partial<Record<NucleusId,string>>={N01:env.SOUL_MESH_N01_URL,N03:env.SOUL_MESH_N03_URL,N04:env.SOUL_MESH_N04_URL,N05:env.SOUL_MESH_N05_URL,N06:env.SOUL_MESH_N06_URL,N07:env.SOUL_MESH_N07_URL};
@@ -22,5 +23,17 @@ export const sendTo=request;export const requestPeerCapability=request;
 export const describePeer=async(target:NucleusId,timeoutMs=10000):Promise<PeerDescription>=>{const message=await request(target,'mesh.describe',{from:'N02',intent:'capability-discovery'},timeoutMs,1);return message.payload as PeerDescription};
 export async function discoverPeerCapabilities(target:NucleusId,timeoutMs=10000){return describePeer(target,timeoutMs)}
 export async function requestPeerTool(target:NucleusId,toolCapability:string,payload:unknown,timeoutMs=15000){return request(target,toolCapability,payload,timeoutMs,1)}
+export async function superGPUExecute(values:number[],operation='identity',device?:string,timeoutMs=15000){
+  if(!Array.isArray(values)||values.length===0||values.some(value=>!Number.isFinite(value)))throw new Error('SUPERGPU_VALUES_INVALID');
+  const metadata:Record<string,unknown>={operation,nucleus:'N02'};
+  if(device?.trim())metadata.device=device.trim();
+  const message=await request('N07','supergpu.execute',{payload:{values},metadata},timeoutMs,1);
+  return message.payload;
+}
+export async function superGPUParallel(tasks:SuperGPUTask[],timeoutMs=30000){
+  if(!Array.isArray(tasks)||tasks.length===0)throw new Error('SUPERGPU_TASKS_REQUIRED');
+  const message=await request('N07','supergpu.parallel',{payload:{tasks}},timeoutMs,1);
+  return message.payload;
+}
 export async function pingAll(timeoutMs=5000){return Promise.all(PEERS.map(async target=>{try{return{target,status:'CONNECTED' as const,response:await request(target,'mesh.ping',{from:'N02',channel:`N02.OUT.${target}`},timeoutMs,1)}}catch(error){return{target,status:'FAILED' as const,error:String(error)}}}))}
 export const N02_OUT_CHANNELS=PEERS.map(x=>`N02.OUT.${x}`);export const N02_IN_CHANNELS=PEERS.map(x=>`N02.IN.${x}`);
