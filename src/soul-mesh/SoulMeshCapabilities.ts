@@ -30,6 +30,14 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation'], tools: []
   },
   {
+    id: 'gemini.google_search', version: '1.0', description: 'N02 Gemini native Google Search grounding path',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation', 'web-grounding'], tools: ['googleSearch']
+  },
+  {
+    id: 'gemini.code_execution', version: '1.0', description: 'N02 Gemini native Python code execution path; enabled only when explicitly configured',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'reasoning', 'computation'], tools: ['codeExecution']
+  },
+  {
     id: 'ai.multimodal', version: '1.0', description: 'N02 multimodal AI capability',
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'media'], tools: []
   },
