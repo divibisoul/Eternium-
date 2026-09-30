@@ -66,28 +66,63 @@ function normalizeProviderModel(value: string | undefined, fallback: string): st
   return normalized || fallback;
 }
 
-export type GeminiNativeTool = 'google_search' | 'code_execution';
+export type GeminiNativeTool = 'google_search' | 'code_execution' | 'url_context' | 'file_search' | 'google_maps';
 
-export function resolveGeminiNativeTools(options: {
+export type GeminiNativeToolOptions = {
   useWebSearch?: boolean;
   enableCodeExecution?: boolean;
-}): GeminiNativeTool[] {
+  enableUrlContext?: boolean;
+  fileSearchStoreNames?: string[];
+  fileSearchTopK?: number;
+  fileSearchMetadataFilter?: string;
+  enableGoogleMaps?: boolean;
+  googleMapsLatitude?: number;
+  googleMapsLongitude?: number;
+};
+
+export function resolveGeminiNativeTools(options: GeminiNativeToolOptions): GeminiNativeTool[] {
   const tools: GeminiNativeTool[] = [];
   if (options.useWebSearch) tools.push('google_search');
   if (options.enableCodeExecution ?? process.env.GEMINI_ENABLE_CODE_EXECUTION === 'true') {
     tools.push('code_execution');
   }
+  if (options.enableUrlContext) tools.push('url_context');
+  if ((options.fileSearchStoreNames ?? []).length > 0) tools.push('file_search');
+  if (options.enableGoogleMaps) tools.push('google_maps');
   return tools;
 }
 
-function buildConfig(useWebSearch: boolean, systemInstruction: string, enableCodeExecution = false): Record<string, unknown> {
+function buildConfig(
+  useWebSearch: boolean,
+  systemInstruction: string,
+  options: Omit<GeminiNativeToolOptions, 'useWebSearch'> = {},
+): Record<string, unknown> {
   const config: Record<string, unknown> = { systemInstruction, temperature: 0.6 };
-  const nativeTools = resolveGeminiNativeTools({ useWebSearch, enableCodeExecution });
-  if (nativeTools.length > 0) {
-    config.tools = nativeTools.map(tool =>
-      tool === 'google_search' ? { googleSearch: {} } : { codeExecution: {} },
-    );
-  }
+  const nativeOptions: GeminiNativeToolOptions = { useWebSearch, ...options };
+  const nativeTools = resolveGeminiNativeTools(nativeOptions);
+  const tools = nativeTools.map(tool => {
+    switch (tool) {
+      case 'google_search': return { googleSearch: {} };
+      case 'code_execution': return { codeExecution: {} };
+      case 'url_context': return { urlContext: {} };
+      case 'file_search':
+        return {
+          fileSearch: {
+            fileSearchStoreNames: options.fileSearchStoreNames,
+            ...(options.fileSearchTopK !== undefined ? { topK: options.fileSearchTopK } : {}),
+            ...(options.fileSearchMetadataFilter ? { metadataFilter: options.fileSearchMetadataFilter } : {}),
+          },
+        };
+      case 'google_maps':
+        return {
+          googleMaps: {
+            ...(options.googleMapsLatitude !== undefined ? { latitude: options.googleMapsLatitude } : {}),
+            ...(options.googleMapsLongitude !== undefined ? { longitude: options.googleMapsLongitude } : {}),
+          },
+        };
+    }
+  });
+  if (tools.length > 0) config.tools = tools;
   return config;
 }
 
@@ -127,6 +162,7 @@ export const processUserDirective = async (
   isFullCognitionMode: boolean,
   cognitivePipeline?: N02CognitivePipelineResult,
   enableCodeExecution = false,
+  nativeToolOptions: Omit<GeminiNativeToolOptions, 'useWebSearch'> = {},
 ): Promise<GenerateContentResponse> => {
   const ai = getAiClient();
 
@@ -148,7 +184,7 @@ export const processUserDirective = async (
     systemInstruction = `${systemInstruction}${pipelineInstruction}`;
   }
 
-  const config = buildConfig(useWebSearch, systemInstruction, enableCodeExecution);
+  const config = buildConfig(useWebSearch, systemInstruction, { ...nativeToolOptions, enableCodeExecution });
   const primaryModel = normalizeProviderModel(process.env.GEMINI_MODEL, 'gemini-2.5-flash');
   const fallbackModel = normalizeProviderModel(process.env.GEMINI_FALLBACK_MODEL, 'gemini-2.5-flash-lite');
 
