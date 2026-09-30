@@ -1,8 +1,8 @@
 # SOUL Handoff — N02
 **Date:** 2026-09-30
-**Main head:** 233962ee53c3c09132c08a8fb4a70eae20f6eba1
+**Main state:** current source contains the full N07 neural contract: neural.forward, neural.learn, neural.parameters and learning.feedback.
 **Role:** Gemini-native capability owner and N02 neural boundary.
-**Recent work:** recovered Gemini Search/URL Context/File Search/Maps/Code Execution paths; Node 22 ESM test stabilization; learning feedback bridge.
-**Critical contract:** N02 bridge emits neural.forward, neural.learn, neural.parameters and learning.feedback toward N07.
-**Dependency now unblocked at source level:** N07 MAIN exposes neural.parameters and learning.feedback after merged PR #75.
-**Next task:** validate the current N02 bridge against the N07 response contract with a real deployed transaction; keep HMAC/correlation validation mandatory.
+**Recent verified source state:** N02's N07NeuralBridge already parses canonical neural parameters and transports feedback metadata with HMAC/correlation validation.
+**Crossfront status:** N07 source receiver is now further integrated with prefrontal learning observations and semantic memory; N02 does not need another neural receiver implementation.
+**Evidence state:** source-level contract is present; deployed N02→N07 transaction remains UNVERIFIED.
+**Next bounded cycle:** perform one concrete bridge reconciliation/online evidence attempt from current N02 MAIN. If environment blocks it, record BLOCKED_ENV with the exact missing endpoint/secret instead of rebuilding already-present code.
