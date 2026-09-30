@@ -83,7 +83,7 @@ export type GeminiNativeToolOptions = {
 export function resolveGeminiNativeTools(options: GeminiNativeToolOptions): GeminiNativeTool[] {
   const tools: GeminiNativeTool[] = [];
   if (options.useWebSearch) tools.push('google_search');
-  if (options.enableCodeExecution ?? process.env.GEMINI_ENABLE_CODE_EXECUTION === 'true') {
+  if (options.enableCodeExecution === true) {
     tools.push('code_execution');
   }
   if (options.enableUrlContext) tools.push('url_context');
