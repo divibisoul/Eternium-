@@ -1,4 +1,10 @@
-import { processUserDirective, transcribeAudio } from '../../services/geminiService.ts';
+import {
+  analyzeAudio,
+  generateGeminiMultimodal,
+  processUserDirective,
+  synthesizeSpeech,
+  transcribeAudio,
+} from '../../services/geminiService.ts';
 import { SystemAspect } from '../../types.ts';
 import { n02CognitivePipeline } from '../cognitive/N02CognitivePipeline';
 import type { SoulMeshMessage } from './SoulMeshProtocol';
@@ -16,6 +22,12 @@ type MeshPayload = {
   mimeType?: string;
   imageBase64?: string;
   imageMimeType?: string;
+  mediaBase64?: string;
+  mediaMimeType?: string;
+  audioBase64?: string;
+  audioMimeType?: string;
+  speechText?: string;
+  voice?: string;
 };
 
 const modes = new Set(Object.values(SystemAspect));
@@ -59,15 +71,18 @@ function inputText(payload: MeshPayload): string {
 function normalizeContents(payload: MeshPayload): any[] {
   if (Array.isArray(payload.contents) && payload.contents.length > 0) return payload.contents as any[];
 
-  if (payload.imageBase64?.trim()) {
-    const mimeType = payload.imageMimeType?.trim();
-    if (!mimeType) throw new Error('MPVS_IMAGE_MIME_TYPE_REQUIRED');
+  const mediaBase64 = payload.mediaBase64?.trim() || payload.imageBase64?.trim() || payload.audioBase64?.trim();
+  const mediaMimeType = payload.mediaMimeType?.trim()
+    || payload.imageMimeType?.trim()
+    || payload.audioMimeType?.trim();
 
+  if (mediaBase64) {
+    if (!mediaMimeType) throw new Error('GEMINI_MEDIA_MIME_TYPE_REQUIRED');
     return [{
       role: 'user',
       parts: [
-        { inlineData: { mimeType, data: payload.imageBase64 } },
-        { text: payload.text?.trim() || payload.input?.trim() || 'Analise a entrada visual fornecida.' },
+        { inlineData: { mimeType: mediaMimeType, data: mediaBase64 } },
+        { text: payload.text?.trim() || payload.input?.trim() || 'Analise a mídia fornecida usando o contexto disponível.' },
       ],
     }];
   }
@@ -106,6 +121,68 @@ async function executeGenerative(message: SoulMeshMessage, forcedCapability?: st
 }
 
 export const createN02AIProviderBridge = (): Record<string, SoulMeshCapabilityHandler> => ({
+  'gemini.text.generate': async message => {
+    const payload = (message.payload ?? {}) as MeshPayload;
+    const text = inputText(payload);
+    return {
+      nucleus: 'N02',
+      capability: message.capability,
+      correlationId: message.correlationId,
+      text: await import('../../services/geminiService.ts').then(module =>
+        module.generateGeminiText(text, {
+          systemInstruction: typeof payload.mode === 'string' ? payload.mode : undefined,
+          useWebSearch: Boolean(payload.useWebSearch),
+        }),
+      ),
+    };
+  },
+  'gemini.multimodal.generate': async message => {
+    const payload = (message.payload ?? {}) as MeshPayload;
+    return {
+      nucleus: 'N02',
+      capability: message.capability,
+      correlationId: message.correlationId,
+      text: await generateGeminiMultimodal(
+        normalizeContents(payload),
+        { useWebSearch: Boolean(payload.useWebSearch) },
+      ),
+    };
+  },
+  'gemini.audio.transcribe': async message => {
+    const payload = (message.payload ?? {}) as MeshPayload;
+    if (!payload.audioBase64?.trim() || !payload.mimeType?.trim()) {
+      throw new Error('GEMINI_AUDIO_INPUT_REQUIRED');
+    }
+    return {
+      nucleus: 'N02',
+      capability: message.capability,
+      correlationId: message.correlationId,
+      transcript: await transcribeAudio(payload.audioBase64, payload.mimeType),
+    };
+  },
+  'gemini.audio.analyze': async message => {
+    const payload = (message.payload ?? {}) as MeshPayload;
+    if (!payload.audioBase64?.trim() || !payload.mimeType?.trim()) {
+      throw new Error('GEMINI_AUDIO_INPUT_REQUIRED');
+    }
+    return {
+      nucleus: 'N02',
+      capability: message.capability,
+      correlationId: message.correlationId,
+      analysis: await analyzeAudio(payload.audioBase64, payload.mimeType),
+    };
+  },
+  'gemini.speech.synthesize': async message => {
+    const payload = (message.payload ?? {}) as MeshPayload;
+    const text = payload.speechText?.trim() || payload.text?.trim() || payload.input?.trim();
+    if (!text) throw new Error('GEMINI_TTS_TEXT_REQUIRED');
+    return {
+      nucleus: 'N02',
+      capability: message.capability,
+      correlationId: message.correlationId,
+      audio: await synthesizeSpeech(text, { voice: payload.voice }),
+    };
+  },
   'ai.generate': executeGenerative,
   'ai.multimodal': message => executeGenerative(message, 'mpvs'),
   'cognitive-processing': executeGenerative,
