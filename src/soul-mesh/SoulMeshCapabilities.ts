@@ -38,6 +38,18 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'reasoning', 'computation'], tools: ['codeExecution']
   },
   {
+    id: 'gemini.url_context', version: '1.0', description: 'N02 Gemini native URL Context retrieval path',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'web', 'url'], tools: ['urlContext']
+  },
+  {
+    id: 'gemini.file_search', version: '1.0', description: 'N02 Gemini native File Search over explicitly supplied File Search Stores',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'retrieval', 'documents'], tools: ['fileSearch']
+  },
+  {
+    id: 'gemini.google_maps', version: '1.0', description: 'N02 Gemini native Google Maps grounding path',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'geospatial'], tools: ['googleMaps']
+  },
+  {
     id: 'ai.multimodal', version: '1.0', description: 'N02 multimodal AI capability',
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'media'], tools: []
   },
