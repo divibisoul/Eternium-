@@ -74,9 +74,9 @@ export function resolveGeminiNativeTools(options: {
   return tools;
 }
 
-function buildConfig(useWebSearch: boolean, systemInstruction: string): Record<string, unknown> {
+function buildConfig(useWebSearch: boolean, systemInstruction: string, enableCodeExecution = false): Record<string, unknown> {
   const config: Record<string, unknown> = { systemInstruction, temperature: 0.6 };
-  const nativeTools = resolveGeminiNativeTools({ useWebSearch });
+  const nativeTools = resolveGeminiNativeTools({ useWebSearch, enableCodeExecution });
   if (nativeTools.length > 0) {
     config.tools = nativeTools.map(tool =>
       tool === 'google_search' ? { googleSearch: {} } : { codeExecution: {} },
@@ -120,6 +120,7 @@ export const processUserDirective = async (
   deployedCapabilities: DeployedCapability[],
   isFullCognitionMode: boolean,
   cognitivePipeline?: N02CognitivePipelineResult,
+  enableCodeExecution = false,
 ): Promise<GenerateContentResponse> => {
   const ai = getAiClient();
 
@@ -141,7 +142,7 @@ export const processUserDirective = async (
     systemInstruction = `${systemInstruction}${pipelineInstruction}`;
   }
 
-  const config = buildConfig(useWebSearch, systemInstruction);
+  const config = buildConfig(useWebSearch, systemInstruction, enableCodeExecution);
   const primaryModel = normalizeProviderModel(process.env.GEMINI_MODEL, 'gemini-2.5-flash');
   const fallbackModel = normalizeProviderModel(process.env.GEMINI_FALLBACK_MODEL, 'gemini-2.5-flash-lite');
 
