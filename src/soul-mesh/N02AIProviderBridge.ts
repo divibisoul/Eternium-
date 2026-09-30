@@ -26,7 +26,6 @@ type MeshPayload = {
   imageMimeType?: string;
   mediaBase64?: string;
   mediaMimeType?: string;
-  audioBase64?: string;
   audioMimeType?: string;
   speechText?: string;
   voice?: string;
