@@ -40,7 +40,11 @@ export async function withGeminiRetry<T>(
     } catch (error) {
       if (attempt >= retries || !isRetryableGeminiError(error)) throw error;
       const exponential = Math.min(maxDelayMs, baseDelayMs * 2 ** attempt);
-      const jitter = Math.floor(exponential * 0.2 * Math.random());
+      const randomBytes = new Uint32Array(1);
+      if (globalThis.crypto?.getRandomValues) {
+        globalThis.crypto.getRandomValues(randomBytes);
+      }
+      const jitter = Math.floor(exponential * 0.2 * ((randomBytes[0] ?? 0) / 0xffffffff));
       await wait(exponential + jitter);
       attempt += 1;
     }
