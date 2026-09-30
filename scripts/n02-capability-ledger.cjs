@@ -23,9 +23,20 @@ const catalog=catalogIds.map(id=>{const runtimeId=aliases[id]||id;const declared
 function git(args){try{return execFileSync('git',args,{cwd:root,encoding:'utf8'}).trim();}catch{return '';}}
 const refs=git(['for-each-ref','--format=%(refname)','refs/heads','refs/remotes/origin','refs/tags']).split('\n').filter(Boolean);
 const suspiciousMathRandomTelemetry=[];
-for(const [p,s] of text){if(!s.includes('Math.random'))continue;const lower=s.toLowerCase();if(/metric|cpu|memory|latency|score|status|plasticity|density|bandwidth|cognitive/.test(lower))suspiciousMathRandomTelemetry.push({file:p,reason:'Math.random appears in a file containing operational or telemetry terms'});}
+for(const [p,s] of text){
+  if(p === 'scripts/n02-capability-ledger.cjs' || !s.includes('Math.random')) continue;
+  const lower=s.toLowerCase();
+  if(/metric|cpu|memory|latency|score|status|plasticity|density|bandwidth|cognitive/.test(lower)){
+    suspiciousMathRandomTelemetry.push({file:p,reason:'Math.random appears in a file containing operational or telemetry terms'});
+  }
+}
 const explicitSimulationMarkers=[];
-for(const [p,s] of text){if(/simulate|fake entropy|random metric|fabricated telemetry|synthetic success/i.test(s))explicitSimulationMarkers.push({file:p});}
+for(const [p,s] of text){
+  if(p === 'scripts/n02-capability-ledger.cjs') continue;
+  if(/simulate|fake entropy|random metric|fabricated telemetry|synthetic success/i.test(s)){
+    explicitSimulationMarkers.push({file:p});
+  }
+}
 const meshHandlerGaps=meshIds.filter(id=>!handlerIds.includes(id)&&!specialExecutable.includes(id));
 const summary={generatedAt:new Date().toISOString(),branch:git(['branch','--show-current']),head:git(['rev-parse','HEAD']),totalFilesScanned:textFiles.length,catalogCapabilities:catalog,mesh:{declared:meshIds,handlerKeys:handlerIds,declaredWithoutDirectHandler:meshHandlerGaps},git:{refsFound:refs.length},suspiciousMathRandomTelemetry,explicitSimulationMarkers};
 fs.mkdirSync('artifacts',{recursive:true});
