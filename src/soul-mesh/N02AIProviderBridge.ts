@@ -1,4 +1,4 @@
-import { processUserDirective, transcribeAudio } from '../../services/geminiService.ts';
+import { processUserDirective, transcribeAudio, type GeminiNativeToolOptions } from '../../services/geminiService.ts';
 import { SystemAspect } from '../../types.ts';
 import { n02CognitivePipeline } from '../cognitive/N02CognitivePipeline';
 import type { SoulMeshMessage } from './SoulMeshProtocol';
@@ -85,7 +85,7 @@ function normalizeContents(payload: MeshPayload): any[] {
   throw new Error('AI_CONTENTS_REQUIRED');
 }
 
-async function executeGenerative(message: SoulMeshMessage, forcedCapability?: string, enableCodeExecution = false, forceWebSearch = false, nativeToolOptions: Parameters<typeof processUserDirective>[6] = {}) {
+async function executeGenerative(message: SoulMeshMessage, forcedCapability?: string, enableCodeExecution = false, forceWebSearch = false, nativeToolOptions: Omit<GeminiNativeToolOptions, 'useWebSearch'> = {}) {
   const payload = (message.payload ?? {}) as MeshPayload;
   const context = await n02CognitivePipeline.process(inputText(payload), message.correlationId);
   const response = await processUserDirective(
