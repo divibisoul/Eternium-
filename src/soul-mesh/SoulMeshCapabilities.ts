@@ -50,6 +50,10 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'geospatial'], tools: ['googleMaps']
   },
   {
+    id: 'inference.reason', version: '1.0', description: 'Compatibility adapter from federated reasoning requests to the canonical N02 cognitive provider',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation', 'perception'], tools: []
+  },
+  {
     id: 'ai.multimodal', version: '1.0', description: 'N02 multimodal AI capability',
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'media'], tools: []
   },
