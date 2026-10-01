@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: Nezha.
+ * Reference: https://github.com/nezhahq/nezha
+ * License/provenance: Exact Nezha/AGI source mapping not independently resolved; verify source/license.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, requireString, boundedArray, optionalNumber } from './N02ExternalHandlerSupport';
 export class AdaptationModuleHandler {
   private readonly provider = createExternalProvider();
