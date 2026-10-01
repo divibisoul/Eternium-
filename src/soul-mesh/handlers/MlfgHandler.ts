@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: TransformerOptimus/SuperAGI.
+ * Reference: https://github.com/TransformerOptimus/SuperAGI
+ * License/provenance: MIT — verified at commit 1ec41bdb6ecfdc2db7d578233d3a603ab51d2aad.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, boundedArray, optionalNumber } from './N02ExternalHandlerSupport';
 export class MlfgHandler {
   private readonly provider = createExternalProvider();
