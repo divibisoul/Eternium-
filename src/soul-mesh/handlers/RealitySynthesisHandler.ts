@@ -1,3 +1,4 @@
+/** External capability provenance: public kernel source mapped for Reality Synthesis. License must be verified at acquisition. Adapted pattern only; no upstream source code copied. */
 import { createExternalProvider, requireRecord, requireString, optionalNumber } from './N02ExternalHandlerSupport';
 export class RealitySynthesisHandler {
   private readonly provider = createExternalProvider();
