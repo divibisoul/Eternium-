@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: NousResearch/hermes-agent.
+ * Reference: https://github.com/NousResearch/hermes-agent
+ * License/provenance: MIT — verified.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, requireString, boundedArray } from './N02ExternalHandlerSupport';
 export class UciHandler {
   private readonly provider = createExternalProvider();
