@@ -1,0 +1,160 @@
+{
+  "schema_version": "1.0.0",
+  "rule": "similarity-first routing; native ownership is preserved; primary consumer is the first downstream execution target; co_nuclei are secondary collaborators",
+  "states": [
+    "TRIAGED",
+    "CONNECTED_CONTRACT",
+    "CI_GREEN",
+    "RUNTIME_VERIFIED",
+    "BLOCKED"
+  ],
+  "mappings": [
+    [
+      "multimodal_cortex",
+      "N03",
+      "N02,N06",
+      "TRIAGED"
+    ],
+    [
+      "autonomous_embodiment",
+      "N07",
+      "N01,SARA",
+      "TRIAGED"
+    ],
+    [
+      "biomolecular_designer",
+      "N06",
+      "N04,SARA",
+      "TRIAGED"
+    ],
+    [
+      "reality_synthesis",
+      "N07",
+      "N06,N04",
+      "TRIAGED"
+    ],
+    [
+      "strategic_planning",
+      "N07",
+      "N05,N06",
+      "TRIAGED"
+    ],
+    [
+      "adaptation_module",
+      "SARA",
+      "N06,N01",
+      "TRIAGED"
+    ],
+    [
+      "scre",
+      "N04",
+      "N06,N07",
+      "TRIAGED"
+    ],
+    [
+      "ecas",
+      "N06",
+      "N07,N02",
+      "TRIAGED"
+    ],
+    [
+      "eus",
+      "N06",
+      "SARA,N04",
+      "TRIAGED"
+    ],
+    [
+      "mlfg",
+      "N06",
+      "N07,SARA",
+      "TRIAGED"
+    ],
+    [
+      "emergent_cognition",
+      "N07",
+      "N06,N05",
+      "TRIAGED"
+    ],
+    [
+      "skill_acquisition",
+      "N04",
+      "N06,N07",
+      "TRIAGED"
+    ],
+    [
+      "uci",
+      "N04",
+      "N07,N02",
+      "TRIAGED"
+    ],
+    [
+      "ethical_governance",
+      "SARA",
+      "N01,N07",
+      "TRIAGED"
+    ],
+    [
+      "strategic_defense",
+      "N07",
+      "N01,SARA",
+      "TRIAGED"
+    ],
+    [
+      "existential_safety",
+      "SARA",
+      "N01,N07",
+      "TRIAGED"
+    ],
+    [
+      "einstein_reasoning",
+      "N06",
+      "N02,SARA",
+      "TRIAGED"
+    ],
+    [
+      "einstein_quantum",
+      "N06",
+      "SARA,N02",
+      "TRIAGED"
+    ],
+    [
+      "cot_arhd",
+      "N07",
+      "N05,N02",
+      "TRIAGED"
+    ],
+    [
+      "cot_drc",
+      "N07",
+      "N06,N05",
+      "TRIAGED"
+    ],
+    [
+      "cot_area",
+      "SARA",
+      "N01,N07",
+      "TRIAGED"
+    ]
+  ],
+  "upstreams": {
+    "brain-system": "N03",
+    "GENesis-AGI": "N07",
+    "nanobot": "N06",
+    "syntra_kernel": "N07",
+    "crewAI": "N04",
+    "PraisonAI": "N06",
+    "hermes-agent": "N04",
+    "agent-framework": "N07",
+    "SuperAGI": "N06",
+    "HASHIRU": "N07",
+    "Codette-Reasoning": "SARA",
+    "chyren-selin": "SARA"
+  },
+  "unresolved": [
+    {
+      "source": "xun-agent",
+      "state": "BLOCKED",
+      "reason": "exact public repository not resolved; no substitute permitted"
+    }
+  ]
+}
