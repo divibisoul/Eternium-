@@ -1,0 +1,38 @@
+name: N02 External Upstream Integrity
+
+on:
+  push:
+    paths:
+      - ".gitmodules"
+      - "docs/N02-EXTERNAL-OPEN-SOURCE-REGISTRY.json"
+      - "external/upstream/**"
+      - ".github/workflows/n02-external-upstream-integrity.yml"
+  pull_request:
+    paths:
+      - ".gitmodules"
+      - "docs/N02-EXTERNAL-OPEN-SOURCE-REGISTRY.json"
+      - "external/upstream/**"
+      - ".github/workflows/n02-external-upstream-integrity.yml"
+
+jobs:
+  verify-submodules:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout N02 with upstream repositories
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+          submodules: recursive
+
+      - name: Verify pinned upstreams
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f .gitmodules
+          count="$(git config --file .gitmodules --name-only --get-regexp '^submodule\..*\.path$' | wc -l | tr -d ' ')"
+          test "$count" -eq 13
+          git submodule status --recursive
+          while IFS= read -r path; do
+            test -d "$path"
+            test -e "$path/.git" || test -f "$path/.git"
+          done < <(git config --file .gitmodules --get-regexp '^submodule\..*\.path$' | awk '{print $2}')

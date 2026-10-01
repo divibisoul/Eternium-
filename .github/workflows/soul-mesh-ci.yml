@@ -2,6 +2,7 @@ name: Soul Mesh CI
 on:
   push:
     branches: [ main ]
+  pull_request:
   workflow_dispatch:
 permissions:
   contents: read
@@ -19,6 +20,10 @@ jobs:
         run: npx tsc -p tsconfig.mesh.json --noEmit
       - name: Gemini reliability tests
         run: node --experimental-transform-types services/geminiReliability.test.ts
+      - name: 21 catalog-only handler regressions
+        run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02CatalogOnlyHandlers.test.ts
+      - name: OSS similarity routing triage
+        run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02OssTriage.test.ts
       - name: N02 capability execution regressions
         run: |
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02FunctionalCapabilities.test.ts

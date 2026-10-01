@@ -2,6 +2,27 @@ import { processUserDirective, transcribeAudio, type GeminiNativeToolOptions } f
 import { SystemAspect } from '../../types.ts';
 import { n02CognitivePipeline } from '../cognitive/N02CognitivePipeline';
 import type { SoulMeshMessage } from './SoulMeshProtocol';
+import { MultimodalCortexHandler } from './handlers/MultimodalCortexHandler';
+import { AutonomousEmbodimentHandler } from './handlers/AutonomousEmbodimentHandler';
+import { BiomolecularDesignerHandler } from './handlers/BiomolecularDesignerHandler';
+import { RealitySynthesisHandler } from './handlers/RealitySynthesisHandler';
+import { StrategicPlanningHandler } from './handlers/StrategicPlanningHandler';
+import { AdaptationModuleHandler } from './handlers/AdaptationModuleHandler';
+import { ScreHandler } from './handlers/ScreHandler';
+import { EcasHandler } from './handlers/EcasHandler';
+import { EusHandler } from './handlers/EusHandler';
+import { MlfgHandler } from './handlers/MlfgHandler';
+import { EmergentCognitionHandler } from './handlers/EmergentCognitionHandler';
+import { SkillAcquisitionHandler } from './handlers/SkillAcquisitionHandler';
+import { UciHandler } from './handlers/UciHandler';
+import { EthicalGovernanceHandler } from './handlers/EthicalGovernanceHandler';
+import { StrategicDefenseHandler } from './handlers/StrategicDefenseHandler';
+import { ExistentialSafetyHandler } from './handlers/ExistentialSafetyHandler';
+import { ScientificReasoningHandler } from './handlers/ScientificReasoningHandler';
+import { EinsteinQuantumHandler } from './handlers/EinsteinQuantumHandler';
+import { CotArhdHandler } from './handlers/CotArhdHandler';
+import { CotDrcHandler } from './handlers/CotDrcHandler';
+import { CotAreaHandler } from './handlers/CotAreaHandler';
 import type { SoulMeshCapabilityHandler } from './SoulMeshCapabilityExecutor';
 
 type MeshPayload = {
@@ -121,6 +142,29 @@ async function executeGenerative(message: SoulMeshMessage, forcedCapability?: st
   };
 }
 
+const externalHandlers = {
+  multimodal_cortex: new MultimodalCortexHandler(),
+  autonomous_embodiment: new AutonomousEmbodimentHandler(),
+  biomolecular_designer: new BiomolecularDesignerHandler(),
+  reality_synthesis: new RealitySynthesisHandler(),
+  strategic_planning: new StrategicPlanningHandler(),
+  adaptation_module: new AdaptationModuleHandler(),
+  scre: new ScreHandler(),
+  ecas: new EcasHandler(),
+  eus: new EusHandler(),
+  mlfg: new MlfgHandler(),
+  emergent_cognition: new EmergentCognitionHandler(),
+  skill_acquisition: new SkillAcquisitionHandler(),
+  uci: new UciHandler(),
+  ethical_governance: new EthicalGovernanceHandler(),
+  strategic_defense: new StrategicDefenseHandler(),
+  existential_safety: new ExistentialSafetyHandler(),
+  einstein_reasoning: new ScientificReasoningHandler(),
+  einstein_quantum: new EinsteinQuantumHandler(),
+  cot_arhd: new CotArhdHandler(),
+  cot_drc: new CotDrcHandler(),
+  cot_area: new CotAreaHandler(),
+};
 export const createN02AIProviderBridge = (): Record<string, SoulMeshCapabilityHandler> => ({
   'ai.generate': executeGenerative,
   'gemini.google_search': message => executeGenerative(message, 'gemini.google_search', false, true),
@@ -198,5 +242,26 @@ export const createN02AIProviderBridge = (): Record<string, SoulMeshCapabilityHa
   'resource.dcrs': async message => {
     const payload = (message.payload ?? {}) as MeshPayload;
     return (await n02CognitivePipeline.process(inputText(payload), message.correlationId)).dcrs;
-  },
+  },  'multimodal_cortex': message => externalHandlers.multimodal_cortex.handle(message.payload, message.correlationId),
+  'autonomous_embodiment': message => externalHandlers.autonomous_embodiment.handle(message.payload, message.correlationId),
+  'biomolecular_designer': message => externalHandlers.biomolecular_designer.handle(message.payload, message.correlationId),
+  'reality_synthesis': message => externalHandlers.reality_synthesis.handle(message.payload, message.correlationId),
+  'strategic_planning': message => externalHandlers.strategic_planning.handle(message.payload, message.correlationId),
+  'adaptation_module': message => externalHandlers.adaptation_module.handle(message.payload, message.correlationId),
+  'scre': message => externalHandlers.scre.handle(message.payload, message.correlationId),
+  'ecas': message => externalHandlers.ecas.handle(message.payload, message.correlationId),
+  'eus': message => externalHandlers.eus.handle(message.payload, message.correlationId),
+  'mlfg': message => externalHandlers.mlfg.handle(message.payload, message.correlationId),
+  'emergent_cognition': message => externalHandlers.emergent_cognition.handle(message.payload, message.correlationId),
+  'skill_acquisition': message => externalHandlers.skill_acquisition.handle(message.payload, message.correlationId),
+  'uci': message => externalHandlers.uci.handle(message.payload, message.correlationId),
+  'ethical_governance': message => externalHandlers.ethical_governance.handle(message.payload, message.correlationId),
+  'strategic_defense': message => externalHandlers.strategic_defense.handle(message.payload, message.correlationId),
+  'existential_safety': message => externalHandlers.existential_safety.handle(message.payload, message.correlationId),
+  'einstein_reasoning': message => externalHandlers.einstein_reasoning.handle(message.payload, message.correlationId),
+  'einstein_quantum': message => externalHandlers.einstein_quantum.handle(message.payload, message.correlationId),
+  'cot_arhd': message => externalHandlers.cot_arhd.handle(message.payload, message.correlationId),
+  'cot_drc': message => externalHandlers.cot_drc.handle(message.payload, message.correlationId),
+  'cot_area': message => externalHandlers.cot_area.handle(message.payload, message.correlationId),
+
 });
