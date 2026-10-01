@@ -148,13 +148,17 @@
     "SuperAGI": "N06",
     "HASHIRU": "N07",
     "Codette-Reasoning": "SARA",
-    "chyren-selin": "SARA"
+    "chyren-selin": "SARA",
+    "xun-agent": "N04"
   },
-  "unresolved": [
-    {
-      "source": "xun-agent",
-      "state": "BLOCKED",
-      "reason": "exact public repository not resolved; no substitute permitted"
+  "unresolved": [],
+  "mapping_evidence": {
+    "xun-agent": {
+      "source": "MenxLi/xun",
+      "commit": "129065cb94748d6a9e8cbe6b51d8f46d8bbeae80",
+      "rationale": "function-based tools -> UCI; sub-agent spawning -> emergent_cognition",
+      "runtime_target_primary": "N04",
+      "runtime_target_secondary": "N07,N06"
     }
-  ]
+  }
 }
