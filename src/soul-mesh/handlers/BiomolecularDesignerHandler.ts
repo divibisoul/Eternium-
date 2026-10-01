@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: HKUDS/nanobot.
+ * Reference: https://github.com/HKUDS/nanobot
+ * License/provenance: MIT — verified at commit e06eb24cf4abdc5b46d354fc7d1c9531b2f52dfa.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, requireString, optionalNumber } from './N02ExternalHandlerSupport';
 export class BiomolecularDesignerHandler {
   private readonly provider = createExternalProvider();
