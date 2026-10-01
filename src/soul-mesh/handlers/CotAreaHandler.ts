@@ -1,3 +1,4 @@
+/** External capability provenance: public Syntra Kernel candidate (MIT verified). Adapted pattern only; no upstream source code copied. */
 import { createHash } from 'node:crypto';
 import { requireRecord, boundedArray, optionalNumber } from './N02ExternalHandlerSupport';
 function mutate(seed:string,value:number,scale:number):number{const hex=createHash('sha256').update(seed).digest('hex').slice(0,12);const unit=parseInt(hex,16)/0xffffffffffff;return value+(unit*2-1)*scale;}
