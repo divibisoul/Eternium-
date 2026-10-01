@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: OmegA/Chyren.
+ * Reference: https://github.com/mnguyenz/chyren
+ * License/provenance: Exact OmegA/Chyren mapping not independently resolved; verify source/license.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, requireString, boundedArray } from './N02ExternalHandlerSupport';
 export class ExistentialSafetyHandler {
   private readonly provider = createExternalProvider();
