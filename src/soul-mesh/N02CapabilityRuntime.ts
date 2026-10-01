@@ -34,7 +34,7 @@ async function runRequestedOrbitalPreflight(message: Parameters<typeof n02Capabi
     candidate_json: candidateJson,
     payload: Array.isArray(sourcePayload.neural_payload) ? sourcePayload.neural_payload : [],
     strategy: String((metadata as Record<string, unknown>).strategy ?? 'external-capability-preflight'),
-  });
+  }, 15000, 1, message.correlationId);
 }
 
 const handlers = createN02AIProviderBridge();
