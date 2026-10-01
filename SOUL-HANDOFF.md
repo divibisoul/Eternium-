@@ -6,4 +6,6 @@
 **Crossfront status:** N07 is the canonical learning receiver and now records learning outcomes in prefrontal observations; N03 routes perceptual reasoning to N02 rather than creating another reasoning authority.
 **Historical fronts:** #19/#20 are closed archaeology. The older transport implementations were not reintroduced because current MAIN already has the stronger canonical Mesh transport.
 **Evidence state:** source-level integration verified; deployed N02↔N07/N01 transactions remain UNVERIFIED.
+**Current cross-front intervention — 2026-10-01:** PR #39 (`fix/n02-orbital-correlation-continuity-2026-10-01`) is the N02 companion to N01 PR #78. It closes a concrete correlation-continuity gap: N02's external-capability preflight now forwards the inbound `correlationId` into the canonical N07 `prefrontal.orbital.evaluate@1.0.0` call; the outbound peer client supports an explicit correlation while preserving legacy callers. A focused test proves outbound correlation/trace/source/target continuity. **State: IMPLEMENTED-IN-PR / RECOVERY_PENDING** until GitHub checks or live evidence exist. Other fronts must consume this path rather than introduce another orbital/prefrontal transport.
+
 **Next bounded cycle:** one real bridge/online-evidence attempt. If credentials/endpoints are absent, record BLOCKED_ENV and move on—do not rebuild present contracts.
