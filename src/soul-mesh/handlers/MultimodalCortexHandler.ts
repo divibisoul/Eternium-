@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: brain-system (PyPI).
+ * Reference: https://pypi.org/project/brain-system/
+ * License/provenance: MIT — source mapping supplied; exact upstream repository not independently resolved.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, requireString } from './N02ExternalHandlerSupport';
 export class MultimodalCortexHandler {
   private readonly provider = createExternalProvider();
