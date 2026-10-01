@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: crewAIInc/crewAI.
+ * Reference: https://github.com/crewAIInc/crewAI
+ * License/provenance: MIT-compatible license text verified.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, boundedArray, optionalNumber } from './N02ExternalHandlerSupport';
 export class EinsteinQuantumHandler {
   private readonly provider = createExternalProvider();
