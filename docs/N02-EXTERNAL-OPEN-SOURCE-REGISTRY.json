@@ -87,12 +87,14 @@
       "dd5a633831e3779077736836c474a2dc75737a10",
       "Apache-2.0",
       "existential_safety;cot_arhd"
+    ],
+    [
+      "xun-agent",
+      "MenxLi/xun",
+      "129065cb94748d6a9e8cbe6b51d8f46d8bbeae80",
+      "UNVERIFIED IN CONNECTOR",
+      "uci;emergent_cognition"
     ]
   ],
-  "unresolved_source_mappings": [
-    {
-      "name": "xun-agent",
-      "reason": "Exact public repository could not be resolved without guessing; no substitute repository is inserted."
-    }
-  ]
+  "unresolved_source_mappings": []
 }

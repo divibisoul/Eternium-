@@ -45,3 +45,7 @@
 [submodule "external/upstream/chyren-selin"]
 	path = external/upstream/chyren-selin
 	url = https://github.com/Mega-Therion/chyren-selin.git
+
+[submodule "external/upstream/xun-agent"]
+	path = external/upstream/xun-agent
+	url = https://github.com/MenxLi/xun.git
