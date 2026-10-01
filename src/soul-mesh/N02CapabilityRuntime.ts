@@ -3,9 +3,34 @@ import { createN02AIProviderBridge } from './N02AIProviderBridge';
 import { generateWithOllama, ollamaConfigured } from './N02OllamaProviderBridge';
 import { SoulMeshAgentRegistry } from './SoulMeshAgentRegistry';
 import { createSoulMeshAgent } from './SoulMeshAgentContract';
+import { requestPeerCapability } from '../../api/soul-mesh/peer-client';
 
 /** N02 runtime: Mesh handlers are wired to existing provider/service code, never to placeholders. */
 export const n02CapabilityRuntime = new SoulMeshCapabilityExecutor();
+
+async function runRequestedOrbitalPreflight(message: Parameters<typeof n02CapabilityRuntime.execute>[0]): Promise<unknown> {
+  const metadata = message.meta ?? {};
+  if (String((metadata as Record<string, unknown>).prefrontal_orbital ?? '').toLowerCase() !== 'true') {
+    return undefined;
+  }
+  const sourcePayload = message.payload && typeof message.payload === 'object'
+    ? message.payload as Record<string, unknown>
+    : {};
+  const workloadsJson = String(
+    (metadata as Record<string, unknown>).workloads_json
+      ?? JSON.stringify(sourcePayload.workloads ?? []),
+  );
+  const candidateJson = String(
+    (metadata as Record<string, unknown>).candidate_json
+      ?? JSON.stringify({ capability: message.capability, payload: sourcePayload }),
+  );
+  return requestPeerCapability('N07', 'prefrontal.orbital.evaluate@1.0.0', {
+    workloads_json: workloadsJson,
+    candidate_json: candidateJson,
+    payload: Array.isArray(sourcePayload.neural_payload) ? sourcePayload.neural_payload : [],
+    strategy: String((metadata as Record<string, unknown>).strategy ?? 'external-capability-preflight'),
+  });
+}
 
 const handlers = createN02AIProviderBridge();
 if (ollamaConfigured()) {
@@ -16,7 +41,11 @@ for (const [capability, handler] of Object.entries(handlers)) {
   if (!n02CapabilityRuntime.registry.has(capability)) {
     throw new Error(`N02_CAPABILITY_NOT_DECLARED:${capability}`);
   }
-  n02CapabilityRuntime.register(capability, handler);
+  n02CapabilityRuntime.register(capability, async message => {
+    const orbital = await runRequestedOrbitalPreflight(message);
+    const result = await handler(message);
+    return orbital === undefined ? result : { orbital_preflight: orbital, result };
+  });
 }
 
 /** N02 is an independent AI nucleus. Agents expose only capabilities actually registered above. */
