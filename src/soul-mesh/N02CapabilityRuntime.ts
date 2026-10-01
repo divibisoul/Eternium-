@@ -18,7 +18,7 @@ async function runRequestedOrbitalPreflight(message: Parameters<typeof n02Capabi
       ? sourcePayload.metadata as Record<string, unknown>
       : {}),
   };
-  if (String(metadata.prefrontal_orbital ?? '').toLowerCase() !== 'true') {
+  if (String((metadata as Record<string, unknown>).prefrontal_orbital ?? '').toLowerCase() !== 'true') {
     return undefined;
   }
   const workloadsJson = String(
