@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: WingedGuardian/GENesis-AGI.
+ * Reference: https://github.com/WingedGuardian/GENesis-AGI
+ * License/provenance: MIT — verified at commit 5dcd938f03f8598979a31aec95aeed49b90a472e.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, boundedArray } from './N02ExternalHandlerSupport';
 export class AutonomousEmbodimentHandler {
   private readonly provider = createExternalProvider();
