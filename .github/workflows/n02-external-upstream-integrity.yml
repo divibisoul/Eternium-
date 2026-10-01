@@ -30,7 +30,7 @@ jobs:
           set -euo pipefail
           test -f .gitmodules
           count="$(git config --file .gitmodules --name-only --get-regexp '^submodule\..*\.path$' | wc -l | tr -d ' ')"
-          test "$count" -eq 12
+          test "$count" -eq 13
           git submodule status --recursive
           while IFS= read -r path; do
             test -d "$path"
