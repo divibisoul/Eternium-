@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: OmegA/Chyren.
+ * Reference: https://github.com/mnguyenz/chyren
+ * License/provenance: Exact OmegA/Chyren mapping not independently resolved; verify source/license.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { requireRecord, boundedArray, optionalNumber } from './N02ExternalHandlerSupport';
 function dftEnergy(signal: number[]): number[] {
   const n=signal.length; const out:number[]=[];
