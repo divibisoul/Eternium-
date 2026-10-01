@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: HASHIRU-AI/HASHIRU.
+ * Reference: https://github.com/HASHIRU-AI/HASHIRU
+ * License/provenance: License file not found through current GitHub connector; verify before redistribution.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, requireString, optionalNumber, boundedArray } from './N02ExternalHandlerSupport';
 export class StrategicPlanningHandler {
   private readonly provider = createExternalProvider();
