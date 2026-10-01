@@ -20,11 +20,10 @@ test('every triaged capability has exactly one primary downstream and valid stat
 test('every resolved upstream is assigned to a downstream nucleus', () => {
   const expected = [
     'brain-system','GENesis-AGI','nanobot','syntra_kernel','crewAI','PraisonAI',
-    'hermes-agent','agent-framework','SuperAGI','HASHIRU','Codette-Reasoning','chyren-selin'
+    'hermes-agent','agent-framework','SuperAGI','HASHIRU','Codette-Reasoning','chyren-selin','xun-agent'
   ];
   for (const source of expected) {
     assert.ok(triage.upstreams[source], source);
   }
-  assert.equal(triage.unresolved[0].source, 'xun-agent');
-  assert.equal(triage.unresolved[0].state, 'BLOCKED');
+  assert.deepEqual(triage.unresolved, []);
 });
