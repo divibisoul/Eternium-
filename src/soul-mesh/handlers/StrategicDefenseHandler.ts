@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: microsoft/agent-framework.
+ * Reference: https://github.com/microsoft/agent-framework
+ * License/provenance: MIT — verified.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, boundedArray } from './N02ExternalHandlerSupport';
 export class StrategicDefenseHandler {
   private readonly provider = createExternalProvider();
