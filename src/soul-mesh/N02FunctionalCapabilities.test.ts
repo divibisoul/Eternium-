@@ -29,3 +29,14 @@ test('NeuralForge and ASC use dedicated agent boundaries', () => {
     ['asc'],
   );
 });
+
+import { N02_EXTERNAL_AGENT_BY_CAPABILITY } from './N02CapabilityRuntime.ts';
+
+test('Every external N02 capability has a dedicated functional agent boundary', () => {
+  for (const [capability, agentId] of Object.entries(N02_EXTERNAL_AGENT_BY_CAPABILITY)) {
+    const agent = n02AgentRegistry.list().find(item => item.id === agentId);
+    assert.ok(agent, 'missing agent for ' + capability);
+    assert.ok(agent?.capabilities.includes(capability), 'capability not bound to ' + agentId + ': ' + capability);
+    assert.notEqual(agentId, 'N02.inference-agent');
+  }
+});
