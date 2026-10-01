@@ -9,13 +9,18 @@ import { requestPeerCapability } from '../../api/soul-mesh/peer-client';
 export const n02CapabilityRuntime = new SoulMeshCapabilityExecutor();
 
 async function runRequestedOrbitalPreflight(message: Parameters<typeof n02CapabilityRuntime.execute>[0]): Promise<unknown> {
-  const metadata = message.meta ?? {};
-  if (String((metadata as Record<string, unknown>).prefrontal_orbital ?? '').toLowerCase() !== 'true') {
-    return undefined;
-  }
   const sourcePayload = message.payload && typeof message.payload === 'object'
     ? message.payload as Record<string, unknown>
     : {};
+  const metadata = {
+    ...(message.meta ?? {}),
+    ...(sourcePayload.metadata && typeof sourcePayload.metadata === 'object'
+      ? sourcePayload.metadata as Record<string, unknown>
+      : {}),
+  };
+  if (String(metadata.prefrontal_orbital ?? '').toLowerCase() !== 'true') {
+    return undefined;
+  }
   const workloadsJson = String(
     (metadata as Record<string, unknown>).workloads_json
       ?? JSON.stringify(sourcePayload.workloads ?? []),
