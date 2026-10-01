@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: TransformerOptimus/SuperAGI.
+ * Reference: https://github.com/TransformerOptimus/SuperAGI
+ * License/provenance: MIT — verified at the source repository.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, boundedArray, requireString } from './N02ExternalHandlerSupport';
 export class SkillAcquisitionHandler {
   private readonly provider = createExternalProvider();
