@@ -1,0 +1,47 @@
+[submodule "external/upstream/brain-system"]
+	path = external/upstream/brain-system
+	url = https://github.com/shivamtyagi18/BRAIN.git
+
+[submodule "external/upstream/genesis-agi"]
+	path = external/upstream/genesis-agi
+	url = https://github.com/WingedGuardian/GENesis-AGI.git
+
+[submodule "external/upstream/nanobot"]
+	path = external/upstream/nanobot
+	url = https://github.com/HKUDS/nanobot.git
+
+[submodule "external/upstream/syntra-kernel"]
+	path = external/upstream/syntra-kernel
+	url = https://github.com/gd2bk1ng/syntra_kernel.git
+
+[submodule "external/upstream/crewai"]
+	path = external/upstream/crewai
+	url = https://github.com/crewAIInc/crewAI.git
+
+[submodule "external/upstream/praisonai"]
+	path = external/upstream/praisonai
+	url = https://github.com/MervinPraison/PraisonAI.git
+
+[submodule "external/upstream/hermes-agent"]
+	path = external/upstream/hermes-agent
+	url = https://github.com/NousResearch/hermes-agent.git
+
+[submodule "external/upstream/agent-framework"]
+	path = external/upstream/agent-framework
+	url = https://github.com/microsoft/agent-framework.git
+
+[submodule "external/upstream/superagi"]
+	path = external/upstream/superagi
+	url = https://github.com/TransformerOptimus/SuperAGI.git
+
+[submodule "external/upstream/hashiru"]
+	path = external/upstream/hashiru
+	url = https://github.com/HASHIRU-AI/HASHIRU.git
+
+[submodule "external/upstream/codette-reasoning"]
+	path = external/upstream/codette-reasoning
+	url = https://github.com/Raiff1982/Codette-Reasoning.git
+
+[submodule "external/upstream/chyren-selin"]
+	path = external/upstream/chyren-selin
+	url = https://github.com/Mega-Therion/chyren-selin.git

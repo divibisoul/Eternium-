@@ -1,0 +1,98 @@
+{
+  "schema_version": "1.0.0",
+  "repository": "divibisoul/Eternium-",
+  "purpose": "Pinned public upstream source registry for SOUL/N02 integration. Upstreams remain intact as git submodules; N02AIProviderBridge remains the runtime boundary.",
+  "generated_from_branch": "feat/add-open-source-upstream-repos-2026-10-01",
+  "sources": [
+    [
+      "brain-system",
+      "shivamtyagi18/BRAIN",
+      "8d4201f72373156165ebc646c5064991fd3ad94a",
+      "MIT",
+      "multimodal_cortex"
+    ],
+    [
+      "GENesis-AGI",
+      "WingedGuardian/GENesis-AGI",
+      "a85f630a09c6cd38be1b5f8379ce309be41d0b72",
+      "MIT",
+      "autonomous_embodiment"
+    ],
+    [
+      "nanobot",
+      "HKUDS/nanobot",
+      "d3d70f20655bce5d3c7a017bfbe803efe09a2438",
+      "MIT",
+      "biomolecular_designer"
+    ],
+    [
+      "syntra_kernel",
+      "gd2bk1ng/syntra_kernel",
+      "755d8ceb0e81c3015329bfc0b01b01e606b44d7a",
+      "MIT",
+      "reality_synthesis"
+    ],
+    [
+      "crewAI",
+      "crewAIInc/crewAI",
+      "fbcf2de39d3f8252500b74a0751b92c5774c751b",
+      "MIT-like permissive license text verified",
+      "scre;einstein_quantum"
+    ],
+    [
+      "PraisonAI",
+      "MervinPraison/PraisonAI",
+      "bb470c786b63a6a8d5e5f3abcfc6080f1a8832f1",
+      "MIT",
+      "eus"
+    ],
+    [
+      "hermes-agent",
+      "NousResearch/hermes-agent",
+      "e8c97320ac8691d4de92af49f98459f9ef9ddb08",
+      "MIT",
+      "uci"
+    ],
+    [
+      "agent-framework",
+      "microsoft/agent-framework",
+      "f1fb145c4d80191aa86b3480d12112d828233763",
+      "MIT",
+      "strategic_defense"
+    ],
+    [
+      "SuperAGI",
+      "TransformerOptimus/SuperAGI",
+      "c3c1982e7bd6a11cfed53c5a193ea502f924b1b6",
+      "MIT",
+      "mlfg;skill_acquisition"
+    ],
+    [
+      "HASHIRU",
+      "HASHIRU-AI/HASHIRU",
+      "de2b514572dbad8625d974e5ff26587ab805502b",
+      "UNVERIFIED IN CONNECTOR",
+      "strategic_planning"
+    ],
+    [
+      "Codette-Reasoning",
+      "Raiff1982/Codette-Reasoning",
+      "1608092a2862ce8070210db37e57f04ac8717965",
+      "CSAL 1.0 - non-commercial; attribution/derivative notice required",
+      "ethical_governance;einstein_reasoning"
+    ],
+    [
+      "chyren-selin",
+      "Mega-Therion/chyren-selin",
+      "dd5a633831e3779077736836c474a2dc75737a10",
+      "Apache-2.0",
+      "existential_safety;cot_arhd"
+    ]
+  ],
+  "unresolved_source_mappings": [
+    {
+      "name": "xun-agent",
+      "reason": "Exact public repository could not be resolved without guessing; no substitute repository is inserted."
+    }
+  ]
+}
