@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: crewAIInc/crewAI.
+ * Reference: https://github.com/crewAIInc/crewAI
+ * License/provenance: MIT-compatible license text verified at commit a6ee25527ec07201e4373fcbf89f128f304a6f2e.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, requireString } from './N02ExternalHandlerSupport';
 export class ScreHandler {
   private readonly provider = createExternalProvider();
