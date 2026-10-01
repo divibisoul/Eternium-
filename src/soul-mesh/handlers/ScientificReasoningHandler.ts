@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: Codette / Newton analytical-agent pattern.
+ * Reference: https://github.com/
+ * License/provenance: Exact Codette source mapping not independently resolved; no source code copied.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, requireString, boundedArray } from './N02ExternalHandlerSupport';
 
 /**
