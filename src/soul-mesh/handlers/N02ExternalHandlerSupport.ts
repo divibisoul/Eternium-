@@ -1,6 +1,6 @@
-import { processUserDirective, transcribeAudio } from '../../services/geminiService.ts';
-import { SystemAspect } from '../../types.ts';
-import { n02CognitivePipeline } from '../cognitive/N02CognitivePipeline';
+import { processUserDirective, transcribeAudio } from '../../../services/geminiService.ts';
+import { SystemAspect } from '../../../types.ts';
+import { n02CognitivePipeline } from '../../cognitive/N02CognitivePipeline';
 
 export function requireRecord(input: unknown, id: string): Record<string, unknown> {
   if (!input || typeof input !== 'object' || Array.isArray(input)) throw new TypeError('N02_' + id.toUpperCase() + '_PAYLOAD_REQUIRED');
