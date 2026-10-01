@@ -1,3 +1,9 @@
+/**
+ * External capability provenance: MervinPraison/PraisonAI.
+ * Reference: https://github.com/MervinPraison/PraisonAI
+ * License/provenance: MIT — verified at commit 66c7de22763ed823a11bcf9370b8db94ef57e71c.
+ * Adaptation only; no upstream source code is copied into this handler.
+ */
 import { createExternalProvider, requireRecord, boundedArray } from './N02ExternalHandlerSupport';
 export class EusHandler {
   private readonly provider = createExternalProvider();
