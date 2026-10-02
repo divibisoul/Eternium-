@@ -1,0 +1,28 @@
+{
+  "schema_version": "1.0.0",
+  "component": {
+    "id": "N02",
+    "role": "ecossistema multiagente e execução colaborativa"
+  },
+  "reason": "functional-complementation",
+  "upstream_capability_sources": [
+    "superpowers",
+    "langgraph",
+    "openhands",
+    "metagpt",
+    "agentscope",
+    "browser-use",
+    "smolagents"
+  ],
+  "canonical_control_plane": "divibisoul/Orquestrador-",
+  "integration": {
+    "agent_engineering": "superpowers.sara-trinity",
+    "routing": "canonical SOUL Mesh via N07",
+    "execution": "N02 native agent/tool boundary",
+    "verification": "agent routing + tool invocation + sandbox smoke tests",
+    "structural_state": "REAL",
+    "runtime_state": "PROJECTED"
+  },
+  "rule": "upstream source remains independent; adapter/configuration/runtime evidence is required before EXECUTABLE"
+}
+

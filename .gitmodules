@@ -50,30 +50,30 @@
 	path = external/upstream/xun-agent
 	url = https://github.com/MenxLi/xun.git
 
-[submodule "integrations/soul-upstream/${id}"]
-	path = integrations/soul-upstream/${id}
-	url = ${url}
+[submodule "integrations/soul-upstream/superpowers"]
+	path = integrations/soul-upstream/superpowers
+	url = https://github.com/obra/superpowers.git
 
-[submodule "integrations/soul-upstream/${id}"]
-	path = integrations/soul-upstream/${id}
-	url = ${url}
+[submodule "integrations/soul-upstream/langgraph"]
+	path = integrations/soul-upstream/langgraph
+	url = https://github.com/langchain-ai/langgraph.git
 
-[submodule "integrations/soul-upstream/${id}"]
-	path = integrations/soul-upstream/${id}
-	url = ${url}
+[submodule "integrations/soul-upstream/openhands"]
+	path = integrations/soul-upstream/openhands
+	url = https://github.com/OpenHands/OpenHands.git
 
-[submodule "integrations/soul-upstream/${id}"]
-	path = integrations/soul-upstream/${id}
-	url = ${url}
+[submodule "integrations/soul-upstream/metagpt"]
+	path = integrations/soul-upstream/metagpt
+	url = https://github.com/FoundationAgents/MetaGPT.git
 
-[submodule "integrations/soul-upstream/${id}"]
-	path = integrations/soul-upstream/${id}
-	url = ${url}
+[submodule "integrations/soul-upstream/agentscope"]
+	path = integrations/soul-upstream/agentscope
+	url = https://github.com/agentscope-ai/agentscope.git
 
-[submodule "integrations/soul-upstream/${id}"]
-	path = integrations/soul-upstream/${id}
-	url = ${url}
+[submodule "integrations/soul-upstream/browser-use"]
+	path = integrations/soul-upstream/browser-use
+	url = https://github.com/browser-use/browser-use.git
 
-[submodule "integrations/soul-upstream/${id}"]
-	path = integrations/soul-upstream/${id}
-	url = ${url}
+[submodule "integrations/soul-upstream/smolagents"]
+	path = integrations/soul-upstream/smolagents
+	url = https://github.com/huggingface/smolagents.git
