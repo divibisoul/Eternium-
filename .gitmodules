@@ -49,3 +49,31 @@
 [submodule "external/upstream/xun-agent"]
 	path = external/upstream/xun-agent
 	url = https://github.com/MenxLi/xun.git
+
+[submodule "integrations/soul-upstream/${id}"]
+	path = integrations/soul-upstream/${id}
+	url = ${url}
+
+[submodule "integrations/soul-upstream/${id}"]
+	path = integrations/soul-upstream/${id}
+	url = ${url}
+
+[submodule "integrations/soul-upstream/${id}"]
+	path = integrations/soul-upstream/${id}
+	url = ${url}
+
+[submodule "integrations/soul-upstream/${id}"]
+	path = integrations/soul-upstream/${id}
+	url = ${url}
+
+[submodule "integrations/soul-upstream/${id}"]
+	path = integrations/soul-upstream/${id}
+	url = ${url}
+
+[submodule "integrations/soul-upstream/${id}"]
+	path = integrations/soul-upstream/${id}
+	url = ${url}
+
+[submodule "integrations/soul-upstream/${id}"]
+	path = integrations/soul-upstream/${id}
+	url = ${url}
