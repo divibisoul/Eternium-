@@ -4,6 +4,7 @@ import { generateWithOllama, ollamaConfigured } from './N02OllamaProviderBridge'
 import { SoulMeshAgentRegistry } from './SoulMeshAgentRegistry';
 import { createSoulMeshAgent } from './SoulMeshAgentContract';
 import { requestPeerCapability } from '../../api/soul-mesh/peer-client';
+import { generateWithExternalInference, externalInferenceConfigured } from './N02ExternalInferenceBridge';
 
 /** N02 runtime: Mesh handlers are wired to existing provider/service code, never to placeholders. */
 export const n02CapabilityRuntime = new SoulMeshCapabilityExecutor();
@@ -40,6 +41,12 @@ async function runRequestedOrbitalPreflight(message: Parameters<typeof n02Capabi
 const handlers = createN02AIProviderBridge();
 if (ollamaConfigured()) {
   handlers['ai.generate.ollama'] = async message => generateWithOllama(message.payload as any);
+}
+if (externalInferenceConfigured('vllm')) {
+  handlers['ai.generate.vllm'] = async message => generateWithExternalInference('vllm', message.payload as any);
+}
+if (externalInferenceConfigured('sglang')) {
+  handlers['ai.generate.sglang'] = async message => generateWithExternalInference('sglang', message.payload as any);
 }
 
 for (const [capability, handler] of Object.entries(handlers)) {
