@@ -4,6 +4,8 @@ import { generateWithOllama, ollamaConfigured } from './N02OllamaProviderBridge'
 import { SoulMeshAgentRegistry } from './SoulMeshAgentRegistry';
 import { createSoulMeshAgent } from './SoulMeshAgentContract';
 import { requestPeerCapability } from '../../api/soul-mesh/peer-client';
+import { generateWithExternalInference, externalInferenceConfigured } from './N02ExternalInferenceBridge';
+import { describeN02ExternalCapabilityFabric, resolveN02ExternalProvider } from './N02ExternalCapabilityFabric';
 
 /** N02 runtime: Mesh handlers are wired to existing provider/service code, never to placeholders. */
 export const n02CapabilityRuntime = new SoulMeshCapabilityExecutor();
@@ -41,6 +43,20 @@ const handlers = createN02AIProviderBridge();
 if (ollamaConfigured()) {
   handlers['ai.generate.ollama'] = async message => generateWithOllama(message.payload as any);
 }
+if (externalInferenceConfigured('vllm')) {
+  handlers['ai.generate.vllm'] = async message => generateWithExternalInference('vllm', message.payload as any);
+}
+if (externalInferenceConfigured('sglang')) {
+  handlers['ai.generate.sglang'] = async message => generateWithExternalInference('sglang', message.payload as any);
+}
+
+handlers['external.capability.fabric.describe@1.0.0'] = async () => describeN02ExternalCapabilityFabric();
+handlers['external.capability.resolve@1.0.0'] = async message => {
+  const input = message.payload && typeof message.payload === 'object' ? message.payload as Record<string, unknown> : {};
+  const provider = String(input.provider ?? '').trim();
+  if (!provider) throw new Error('N02_EXTERNAL_PROVIDER_REQUIRED');
+  return { nucleus: 'N02', provider: resolveN02ExternalProvider(provider), correlationId: message.correlationId };
+};
 
 for (const [capability, handler] of Object.entries(handlers)) {
   if (!n02CapabilityRuntime.registry.has(capability)) {

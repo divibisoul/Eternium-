@@ -78,6 +78,14 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'code-audit'], tools: []
   },
   {
+    id: 'ai.generate.vllm', version: '1.0', description: 'N02 generative inference through a configured vLLM OpenAI-compatible runtime',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation', 'high-throughput-inference'], tools: []
+  },
+  {
+    id: 'ai.generate.sglang', version: '1.0', description: 'N02 generative inference through a configured SGLang OpenAI-compatible runtime',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation', 'high-performance-inference'], tools: []
+  },
+  {
     id: 'ai.generate.ollama', version: '1.0', description: 'N02 generative AI through a configured local Ollama OpenAI-compatible endpoint',
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation', 'local-inference'], tools: []
   },
@@ -104,6 +112,14 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
   {
     id: 'octacore.execute', version: '1.0', description: 'N02 OctaCore execution boundary over existing capability handlers',
     request: true, response: true, events: false, owner: 'N02', context: ['execution', 'octacore'], tools: []
+  },
+  {
+    id: 'external.capability.resolve@1.0.0', version: '1.0.0', description: 'Resolve an external upstream source to its canonical owner and N02 affinity',
+    request: true, response: true, events: false, owner: 'N02', context: ['integration', 'routing'], tools: []
+  },
+  {
+    id: 'external.capability.fabric.describe@1.0.0', version: '1.0.0', description: 'Describe the first-class 25-source N02 capability fabric',
+    request: true, response: true, events: false, owner: 'N02', context: ['integration', 'observability'], tools: []
   },
   {
     id: 'mesh.describe', version: '1.0', description: 'N02 identity, capabilities, tools and transport discovery',
