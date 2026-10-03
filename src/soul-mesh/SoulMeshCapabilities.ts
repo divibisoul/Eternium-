@@ -114,6 +114,14 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: false, owner: 'N02', context: ['execution', 'octacore'], tools: []
   },
   {
+    id: 'external.capability.resolve@1.0.0', version: '1.0.0', description: 'Resolve an external upstream source to its canonical owner and N02 affinity',
+    request: true, response: true, events: false, owner: 'N02', context: ['integration', 'routing'], tools: []
+  },
+  {
+    id: 'external.capability.fabric.describe@1.0.0', version: '1.0.0', description: 'Describe the first-class 25-source N02 capability fabric',
+    request: true, response: true, events: false, owner: 'N02', context: ['integration', 'observability'], tools: []
+  },
+  {
     id: 'mesh.describe', version: '1.0', description: 'N02 identity, capabilities, tools and transport discovery',
     request: true, response: true, events: false, owner: 'N02', context: [], tools: []
   },
