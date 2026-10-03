@@ -78,6 +78,14 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'code-audit'], tools: []
   },
   {
+    id: 'ai.generate.vllm', version: '1.0', description: 'N02 generative inference through a configured vLLM OpenAI-compatible runtime',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation', 'high-throughput-inference'], tools: []
+  },
+  {
+    id: 'ai.generate.sglang', version: '1.0', description: 'N02 generative inference through a configured SGLang OpenAI-compatible runtime',
+    request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation', 'high-performance-inference'], tools: []
+  },
+  {
     id: 'ai.generate.ollama', version: '1.0', description: 'N02 generative AI through a configured local Ollama OpenAI-compatible endpoint',
     request: true, response: true, events: false, owner: 'N02', context: ['request', 'conversation', 'local-inference'], tools: []
   },
