@@ -30,5 +30,7 @@ jobs:
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02TransportIntegrity.test.ts
       - name: N02 restored boundary regressions
         run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs api/n02-reintegration.test.ts
+      - name: Soul Mesh listener smoke
+        run: npm run mesh:listener:check
       - name: Build web runtime
         run: npm run build
