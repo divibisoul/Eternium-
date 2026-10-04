@@ -1,9 +1,9 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import process from "node:process";
-import { isSoulMeshMessage, createSoulMeshMessage, type SoulMeshMessage } from "../src/soul-mesh/SoulMeshProtocol";
-import { SOUL_MESH_CAPABILITIES } from "../src/soul-mesh/SoulMeshCapabilities";
-import { SoulMeshCapabilityRegistry } from "../src/soul-mesh/SoulMeshCapabilityRegistry";
-import { SoulMeshCapabilityExecutor } from "../src/soul-mesh/SoulMeshCapabilityExecutor";
+import { isSoulMeshMessage, createSoulMeshMessage, type SoulMeshMessage } from "../src/soul-mesh/SoulMeshProtocol.ts";
+import { SOUL_MESH_CAPABILITIES } from "../src/soul-mesh/SoulMeshCapabilities.ts";
+import { SoulMeshCapabilityRegistry } from "../src/soul-mesh/SoulMeshCapabilityRegistry.ts";
+import { SoulMeshCapabilityExecutor } from "../src/soul-mesh/SoulMeshCapabilityExecutor.ts";
 
 const HOST = process.env.SOUL_MESH_HOST ?? "0.0.0.0";
 const PORT = Number(process.env.SOUL_MESH_PORT ?? 3020);
