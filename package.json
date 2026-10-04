@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "start": "node --experimental-strip-types scripts/soul-mesh-server.ts"
+    "start": "node --experimental-strip-types scripts/soul-mesh-server.ts",
+    "mesh:listener:check": "node scripts/test-soul-mesh-listener.mjs"
   },
   "dependencies": {
     "react-dom": "^19.1.0",
