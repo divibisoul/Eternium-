@@ -2,16 +2,12 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import process from "node:process";
 import { isSoulMeshMessage, createSoulMeshMessage, type SoulMeshMessage } from "../src/soul-mesh/SoulMeshProtocol.ts";
 import { SOUL_MESH_CAPABILITIES } from "../src/soul-mesh/SoulMeshCapabilities.ts";
-import { SoulMeshCapabilityRegistry } from "../src/soul-mesh/SoulMeshCapabilityRegistry.ts";
-import { SoulMeshCapabilityExecutor } from "../src/soul-mesh/SoulMeshCapabilityExecutor.ts";
 
 const HOST = process.env.SOUL_MESH_HOST ?? "0.0.0.0";
 const PORT = Number(process.env.SOUL_MESH_PORT ?? 3020);
 const MAX_BYTES = Number(process.env.SOUL_MESH_MAX_REQUEST_BYTES ?? 2 * 1024 * 1024);
 const nucleus = "N02" as const;
 
-const registry = new SoulMeshCapabilityRegistry();
-const executor = new SoulMeshCapabilityExecutor(registry);
 
 function writeJson(res: ServerResponse, status: number, value: unknown) {
   const body = JSON.stringify(value);
@@ -54,14 +50,14 @@ function discovery() {
       id: capability.id,
       version: capability.version,
       owner: capability.owner,
-      status: executor.has(capability.id) ? "EXECUTABLE" : "DECLARED",
+      status: "DECLARED",
       request: capability.request,
       response: capability.response,
       events: capability.events,
       tools: capability.tools ?? [],
       context: capability.context ?? []
     })),
-    executableCapabilities: executor.listExecutable(),
+    executableCapabilities: [],
     transport: { protocol: "http", endpoint: "http://" + HOST + ":" + PORT + "/mesh/in" },
     runtime: "Eternium-N02"
   };
@@ -135,29 +131,8 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    if (!executor.has(value.capability ?? "")) {
-      writeJson(res, 404, errorFor(value, "CAPABILITY_HANDLER_NOT_REGISTERED"));
-      return;
-    }
-
-    const result = await executor.execute(value);
-    const outbound = createSoulMeshMessage({
-      source: nucleus,
-      target: value.source,
-      kind: "response",
-      capability: value.capability,
-      correlationId: value.correlationId,
-      payload: result,
-      meta: {
-        runtime: "Eternium-N02",
-        transport: "HTTP",
-        encoding: "json",
-        version: "1.1.0",
-        traceId: value.meta?.traceId
-      }
-    });
-
-    writeJson(res, 200, outbound);
+    writeJson(res, 503, errorFor(value, "CAPABILITY_RUNTIME_NOT_BOUND",
+      "Standalone listener is live; native N02 capability handlers remain owned by the existing runtime."));
   } catch (error) {
     writeJson(res, 500, { code: "MESH_INTERNAL_ERROR", detail: error instanceof Error ? error.message : String(error) });
   }
