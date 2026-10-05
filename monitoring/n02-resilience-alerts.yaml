@@ -1,0 +1,32 @@
+groups:
+  - name: soul.n02.mesh.resilience
+    rules:
+      - alert: N02MeshPeerCircuitOpen
+        expr: n02_mesh_circuit_state{target!=""} == 1
+        for: 1m
+        labels:
+          severity: warning
+          nucleus: N02
+        annotations:
+          summary: "N02 Mesh circuit open"
+          description: "N02 has opened a circuit for peer {{ $labels.target }}."
+
+      - alert: N02MeshPeerFailureBurst
+        expr: increase(n02_mesh_failures_total[5m]) >= 3
+        for: 2m
+        labels:
+          severity: warning
+          nucleus: N02
+        annotations:
+          summary: "N02 Mesh failure burst"
+          description: "Peer {{ $labels.target }} reached at least three outbound failures in five minutes."
+
+      - alert: N02MeshRetryPressure
+        expr: increase(n02_mesh_retries_total[5m]) >= 5
+        for: 2m
+        labels:
+          severity: warning
+          nucleus: N02
+        annotations:
+          summary: "N02 Mesh retry pressure"
+          description: "Peer {{ $labels.target }} required repeated retries; inspect latency, saturation and remote errors."
