@@ -32,5 +32,7 @@ jobs:
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02PeerClientHmac.test.ts
       - name: N02 restored boundary regressions
         run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs api/n02-reintegration.test.ts
+      - name: N01↔N02 live E2E gate (environment-gated)
+        run: node scripts/n02-n01-live-e2e.mjs
       - name: Build web runtime
         run: npm run build
