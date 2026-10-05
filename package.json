@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test:mesh:resilience": "node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs api/soul-mesh/resilience.test.ts"
+    "test:mesh:resilience": "node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs api/soul-mesh/resilience.test.ts",
+    "validate:capability-document": "node scripts/validate-capability-document.mjs"
   },
   "dependencies": {
     "react-dom": "^19.1.0",
