@@ -35,3 +35,10 @@ test('OctaCore N02 boundary rejects non-executable inner capability', async () =
   assert.equal(result.status, 501);
   assert.equal(result.payload.payload.code, 'OCTACORE_N02_CAPABILITY_NOT_EXECUTABLE');
 });
+
+
+test('N02 exposes the restored read-only SARA Clareira audit capability', async () => {
+  const source = await readFile(new URL('./soul-mesh.ts', import.meta.url), 'utf8');
+  assert.match(source, /sara\.clareira\.audit/);
+  assert.match(source, /\/v1\/clareira\/audit/);
+});
