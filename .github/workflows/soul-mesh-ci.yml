@@ -39,5 +39,7 @@ jobs:
         run: npm run test:mesh:resilience
       - name: N01↔N02 live E2E gate (environment-gated)
         run: node scripts/n02-n01-live-e2e.mjs
+      - name: Soul Mesh listener smoke
+        run: npm run mesh:listener:check
       - name: Build web runtime
         run: npm run build

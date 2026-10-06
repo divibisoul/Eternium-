@@ -8,8 +8,12 @@
     "build": "vite build",
     "preview": "vite preview",
     "lint": "tsc --noEmit",
-    "test:mesh:resilience": "node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs api/soul-mesh/resilience.test.ts",
-    "validate:capability-document": "node scripts/validate-capability-document.mjs"
+    "test:mesh:resilience": "node --experimental-strip-types scripts/test-mesh-resilience-forensic.ts && node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs api/soul-mesh/resilience.test.ts",
+    "validate:capability-document": "node scripts/validate-capability-document.mjs",
+    "test:mesh:resilience:forensic": "node --experimental-strip-types scripts/test-mesh-resilience-forensic.ts",
+    "start": "node --experimental-strip-types scripts/soul-mesh-server.ts",
+    "mesh:listener:check": "node scripts/test-soul-mesh-listener.mjs",
+    "test:mesh": "tsx --test api/soul-mesh/*.test.ts"
   },
   "dependencies": {
     "react-dom": "^19.1.0",

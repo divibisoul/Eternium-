@@ -1,0 +1,31 @@
+name: N02 Forensic Delta
+
+on:
+  push:
+    branches: [forensic/n02-resilience-generative-v3]
+  pull_request:
+    branches: [main, 'upgrade/n02-hybrid-soul-mesh-v2']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install
+        run: npm install --no-audit --no-fund
+      - name: Existing Mesh regression suite
+        run: npm run test:mesh
+      - name: Semantic HMAC regression
+        run: node --experimental-strip-types scripts/test-mesh-security.ts
+      - name: Strict Mesh typecheck
+        run: npx tsc -p tsconfig.mesh.json --noEmit
+      - name: Build
+        run: npm run build
