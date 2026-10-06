@@ -39,3 +39,5 @@ export async function superGPUParallel(tasks:SuperGPUTask[],timeoutMs=30000){
 }
 export async function pingAll(timeoutMs=5000){return Promise.all(PEERS.map(async target=>{try{return{target,status:'CONNECTED' as const,response:await request(target,'mesh.ping',{from:'N02',channel:`N02.OUT.${target}`},timeoutMs,1)}}catch(error){return{target,status:'FAILED' as const,error:String(error)}}}))}
 export const N02_OUT_CHANNELS=PEERS.map(x=>`N02.OUT.${x}`);export const N02_IN_CHANNELS=PEERS.map(x=>`N02.IN.${x}`);
+
+export const listPeerCapabilities = discoverPeerCapabilities;
