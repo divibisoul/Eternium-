@@ -331,3 +331,6 @@ export class MeshResilienceController {
 }
 
 export const meshResilience = new MeshResilienceController();
+
+export const isIdempotentMeshCapability = isIdempotentCapability;
+export function getMeshResiliencePrometheus(): string { return meshResilience.prometheus(); }
