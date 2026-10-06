@@ -12,7 +12,8 @@
     "validate:capability-document": "node scripts/validate-capability-document.mjs",
     "test:mesh:resilience:forensic": "node --experimental-strip-types scripts/test-mesh-resilience-forensic.ts",
     "start": "node --experimental-strip-types scripts/soul-mesh-server.ts",
-    "mesh:listener:check": "node scripts/test-soul-mesh-listener.mjs"
+    "mesh:listener:check": "node scripts/test-soul-mesh-listener.mjs",
+    "test:mesh": "tsx --test api/soul-mesh/*.test.ts"
   },
   "dependencies": {
     "react-dom": "^19.1.0",
