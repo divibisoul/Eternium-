@@ -1,0 +1,32 @@
+name: SOUL v1 foundation CI - N02
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install dependencies
+        run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Typecheck
+        run: npx tsc --noEmit
+      - name: Mesh and capability regressions
+        run: |
+          node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02FunctionalCapabilities.test.ts
+          node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02TransportIntegrity.test.ts
+          node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02Lote3Capabilities.test.ts
+          node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02PeerClientHmac.test.ts
+      - name: Build
+        run: npm run build
