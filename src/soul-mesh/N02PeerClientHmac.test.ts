@@ -102,3 +102,45 @@ test('N02 peer client generates nonce/HMAC and validates correlated N01 HTTP res
     else process.env.SOUL_MESH_HMAC_SECRET = previousSecret;
   }
 });
+
+test('N02 routes public capability execution to N07 with provider metadata', async () => {
+  const oldUrl = process.env.SOUL_MESH_N07_URL;
+  const oldSecret = process.env.SOUL_MESH_HMAC_SECRET;
+  const oldFetch = globalThis.fetch;
+  process.env.SOUL_MESH_N07_URL = 'http://n07.example.test/api/soul-mesh';
+  delete process.env.SOUL_MESH_HMAC_SECRET;
+  try {
+    const { executePublicCapability } = await import('../../api/soul-mesh/peer-client.ts');
+    globalThis.fetch = async (_input, init) => {
+      const request = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      assert.equal(request.target, 'N07');
+      assert.equal(request.capability, 'external.fedml.execute@1.0.0');
+      assert.equal(
+        (request.payload as Record<string, unknown>).payload,
+        'train',
+      );
+      assert.deepEqual(
+        (request.payload as Record<string, unknown>).metadata,
+        { provider: 'fedml', external_operation: 'federated.train' },
+      );
+      return new Response(JSON.stringify({
+        protocol: 'soul-mesh/1',
+        contractVersion: '1.1.0',
+        id: randomUUID(),
+        correlationId: request.correlationId,
+        source: 'N07',
+        target: 'N02',
+        kind: 'response',
+        capability: request.capability,
+        payload: { state: 'PASS', provider: 'fedml' },
+        timestamp: Date.now(),
+      }), { status: 200, headers: { 'content-type': 'application/json' } });
+    };
+    const result = await executePublicCapability('fedml', 'federated.train', 'train');
+    assert.deepEqual(result, { state: 'PASS', provider: 'fedml' });
+  } finally {
+    globalThis.fetch = oldFetch;
+    if (oldUrl === undefined) delete process.env.SOUL_MESH_N07_URL; else process.env.SOUL_MESH_N07_URL = oldUrl;
+    if (oldSecret === undefined) delete process.env.SOUL_MESH_HMAC_SECRET; else process.env.SOUL_MESH_HMAC_SECRET = oldSecret;
+  }
+});
