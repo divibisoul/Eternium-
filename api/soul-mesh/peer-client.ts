@@ -25,6 +25,28 @@ export const sendTo=request;export const requestPeerCapability=request;
 export const describePeer=async(target:NucleusId,timeoutMs=10000):Promise<PeerDescription>=>{const message=await request(target,'mesh.describe',{from:'N02',intent:'capability-discovery'},timeoutMs,1);return message.payload as PeerDescription};
 export async function discoverPeerCapabilities(target:NucleusId,timeoutMs=10000){return describePeer(target,timeoutMs)}
 export async function requestPeerTool(target:NucleusId,toolCapability:string,payload:unknown,timeoutMs=15000){return request(target,toolCapability,payload,timeoutMs,1)}
+export type PublicCapabilityProvider =
+  | 'bijux-dag-runtime' | 'ouro-loop' | 'recuris' | 'fedml' | 'hivemind'
+  | 'temporal' | 'hora-graph-core' | 'cognitive-workspace' | 'ravana' | 'ray' | 'nats-go';
+
+export async function executePublicCapability(
+  provider: PublicCapabilityProvider,
+  operation: string,
+  payload: unknown,
+  timeoutMs = 60000,
+  correlationId = uuid(),
+) {
+  const normalizedOperation = operation.trim();
+  if (!normalizedOperation) throw new Error('PUBLIC_CAPABILITY_OPERATION_REQUIRED');
+  const message = await request(
+    'N07',
+    `external.${provider}.execute@1.0.0`,
+    { payload, metadata: { provider, external_operation: normalizedOperation } },
+    timeoutMs,
+    1,
+  );
+  return message.payload;
+}
 export async function superGPUExecute(values:number[],operation='identity',device?:string,timeoutMs=15000){
   if(!Array.isArray(values)||values.length===0||values.some(value=>!Number.isFinite(value)))throw new Error('SUPERGPU_VALUES_INVALID');
   const metadata:Record<string,unknown>={operation,nucleus:'N02'};
