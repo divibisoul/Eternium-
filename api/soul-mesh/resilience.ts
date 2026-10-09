@@ -116,8 +116,6 @@ export function isIdempotentCapability(capability: string): boolean {
   return new Set(['mesh.ping', 'mesh.health', 'mesh.describe', 'capability.list']).has(capability.trim());
 }
 
-// Additive compatibility alias for callers using the explicit Mesh-qualified name.
-export const isIdempotentMeshCapability = isIdempotentCapability;
 
 export function classifyMeshError(error: unknown): MeshFailureKind {
   const message = error instanceof Error ? error.message : String(error);
