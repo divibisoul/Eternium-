@@ -11,14 +11,18 @@ test('Mesh resilience retains bounded idempotency and jitter semantics', () => {
   assert.equal(jitteredBackoffDelayMs(0, { baseBackoffMs: 100, maxBackoffMs: 1000 }, 1), 120);
 });
 
-test('Mesh resilience opens, recovers and exposes SLIs without fake success', () => {
-  const controller = new MeshResilienceController({ failureThreshold: 2, resetTimeoutMs: 1 });
+test('Mesh resilience opens, recovers and exposes SLIs without fake success', async () => {
+  const controller = new MeshResilienceController({ failureThreshold: 2, resetTimeoutMs: 100 });
   controller.begin('N07');
   controller.failure('N07','mesh.ping',new Error('network'),0,false);
   controller.begin('N07');
   controller.failure('N07','mesh.ping',new Error('network'),1,false);
   assert.equal(controller.snapshot().peers.N07.state, 'open');
+  assert.equal(controller.canRequest('N07'), false);
+  await new Promise(resolve => setTimeout(resolve, 110));
   assert.equal(controller.canRequest('N07'), true);
+  assert.equal(controller.snapshot().peers.N07.state, 'half-open');
+  controller.begin('N07');
   controller.success('N07', 10);
   const snapshot = controller.snapshot().peers.N07;
   assert.equal(snapshot.state, 'closed');
