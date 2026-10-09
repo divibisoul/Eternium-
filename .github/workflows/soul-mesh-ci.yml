@@ -37,7 +37,11 @@ jobs:
         run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs api/n02-reintegration.test.ts
       - name: N02 Mesh resilience regressions
         run: npm run test:mesh:resilience
-      - name: N01↔N02 live E2E gate (environment-gated)
+      - name: N01↔N02 live E2E gate (fail-closed, real runtime required)
+        env:
+          SOUL_MESH_N01_URL: ${{ vars.SOUL_MESH_N01_URL }}
+          SOUL_MESH_HMAC_SECRET: ${{ secrets.SOUL_MESH_HMAC_SECRET }}
+          SOUL_REQUIRE_LIVE_E2E: 'true'
         run: node scripts/n02-n01-live-e2e.mjs
       - name: Soul Mesh listener smoke
         run: npm run mesh:listener:check
