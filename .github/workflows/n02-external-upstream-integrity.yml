@@ -31,8 +31,12 @@ jobs:
           test -f .gitmodules
           count="$(git config --file .gitmodules --name-only --get-regexp '^submodule\..*\.path$' | wc -l | tr -d ' ')"
           test "$count" -eq 13
-          git submodule status --recursive
           while IFS= read -r path; do
             test -d "$path"
             test -e "$path/.git" || test -f "$path/.git"
-          done < <(git config --file .gitmodules --get-regexp '^submodule\..*\.path$' | awk '{print $2}')
+            expected="$(git ls-tree HEAD -- "$path" | awk '{print $3}')"
+            actual="$(git -C "$path" rev-parse HEAD)"
+            test -n "$expected"
+            test "$expected" = "$actual"
+          done < <(git config --file .gitmodules --get-regexp '^submodule\..*\.path
+ | awk '{print $2}')
