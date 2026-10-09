@@ -41,3 +41,6 @@ export async function pingAll(timeoutMs=5000){return Promise.all(PEERS.map(async
 export const N02_OUT_CHANNELS=PEERS.map(x=>`N02.OUT.${x}`);export const N02_IN_CHANNELS=PEERS.map(x=>`N02.IN.${x}`);
 
 export const listPeerCapabilities = discoverPeerCapabilities;
+
+// Stable read-only metrics facade consumed by the /api/soul-mesh/metrics endpoint.
+export const getMeshResiliencePrometheus = (): string => n02MeshResilience.prometheus();

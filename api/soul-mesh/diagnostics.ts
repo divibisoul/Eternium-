@@ -15,7 +15,7 @@ export default async function handler(req: any, res: any) {
       if (item.status !== 'CONNECTED') return { target: item.target, status: 'UNREACHABLE' as const };
       try {
         const response = await listPeerCapabilities(item.target, 5000);
-        return { target: item.target, status: 'CAPABILITIES_OK' as const, response: response.payload };
+        return { target: item.target, status: 'CAPABILITIES_OK' as const, response };
       } catch (error) {
         return { target: item.target, status: 'CAPABILITIES_FAILED' as const, error: String(error) };
       }

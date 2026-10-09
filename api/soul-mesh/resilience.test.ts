@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { MeshResilienceController, backoffDelayMs, jitteredBackoffDelayMs, isIdempotentCapability } from './resilience.ts';
+import { MeshResilienceController, backoffDelayMs, jitteredBackoffDelayMs, isIdempotentCapability, isIdempotentMeshCapability } from './resilience.ts';
 
 test('Mesh resilience retains bounded idempotency and jitter semantics', () => {
   assert.equal(isIdempotentMeshCapability('mesh.ping'), true);
