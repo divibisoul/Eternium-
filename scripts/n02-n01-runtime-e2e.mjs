@@ -92,7 +92,7 @@ try {
   // These are the checked-out executable runtimes, launched as independent processes.
   const n01 = start('N01', process.execPath, ['scripts/soul-mesh-server-entry.mjs'], resolve(n01Workdir), n01Env);
   const n02 = start('N02', process.execPath, [
-    '--experimental-strip-types',
+    '--experimental-transform-types',
     '--loader', './scripts/n02-ts-extension-loader.mjs',
     'scripts/soul-mesh-server.ts',
   ], process.cwd(), n02Env);
