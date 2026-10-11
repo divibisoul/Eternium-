@@ -45,8 +45,8 @@ console.log(JSON.stringify({
   status: 'PASS',
   n02DeclaredCapabilities: declared.length,
   n02ExecutableCapabilities: executable.length,
-  n01OwnedBoundary: declared.filter(capability => capability.startsWith('clareira.')).length,
-  n02OwnedRoutes: declared.filter(capability => !capability.startsWith('clareira.')).length,
+  n01RoutedClareiraBoundary: declared.filter(capability => capability.startsWith('clareira.')).length,
+  n02RoutedCapabilities: declared.filter(capability => !capability.startsWith('clareira.')).length,
   dynamicPeerAdvertisementRequired: false,
   checkedAt: new Date().toISOString(),
 }, null, 2));
