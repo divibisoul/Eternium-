@@ -104,13 +104,17 @@ async function run() {
     && roundTrip.source === 'N01'
     && roundTrip.target === 'N02'
     && roundTrip.correlationId === roundTripCorrelationId
-    && roundTrip.payload?.ok === true
+    && roundTrip.payload?.status === 'ok'
     && roundTrip.payload?.nucleus === 'N02'
-    && roundTrip.payload?.peer === 'N01'
-    && roundTrip.payload?.parentCorrelationId === roundTripCorrelationId
-    && roundTrip.payload?.peerResponse?.ok === true
-    && roundTrip.payload?.peerResponse?.nucleus === 'N01'
-    && roundTrip.payload?.authentication === 'HMAC_VERIFIED';
+    && roundTrip.payload?.capability === 'mesh.peer.ping'
+    && roundTrip.payload?.correlationId === roundTripCorrelationId
+    && roundTrip.payload?.result?.ok === true
+    && roundTrip.payload?.result?.nucleus === 'N02'
+    && roundTrip.payload?.result?.peer === 'N01'
+    && roundTrip.payload?.result?.parentCorrelationId === roundTripCorrelationId
+    && roundTrip.payload?.result?.peerResponse?.ok === true
+    && roundTrip.payload?.result?.peerResponse?.nucleus === 'N01'
+    && roundTrip.payload?.result?.authentication === 'HMAC_VERIFIED';
 
   if (runAi) {
     for (const capability of ['ai.generate', 'ai.multimodal', 'cognitive-processing']) {
