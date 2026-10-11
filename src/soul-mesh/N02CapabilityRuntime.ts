@@ -131,7 +131,7 @@ function agentForCapability(capability: string): string {
 
 const agentCapabilities = new Map<string, string[]>();
 for (const capability of n02CapabilityRuntime.listExecutable()) {
-  const agentId = agentForCapability(capability);
+  const agentId = capability === 'mesh.peer.ping' ? 'N02.integration-agent' : agentForCapability(capability);
   const list = agentCapabilities.get(agentId) ?? [];
   list.push(capability);
   agentCapabilities.set(agentId, list);
