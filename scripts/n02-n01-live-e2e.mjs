@@ -71,7 +71,21 @@ async function run() {
   }
 
   const ping = await postN01('mesh.ping', { probe: 'n02-n01-live-e2e' });
-  const results = { n02ToN01: ping.kind === 'response' };
+  const results = { ciIngressToN01: ping.kind === 'response' && ping.source === 'N01' && ping.target === 'N02' };
+
+  const roundTripCorrelationId = randomUUID();
+  const roundTrip = await postN01('mesh.peer.ping', { probe: 'n02-n01-authenticated-round-trip' }, roundTripCorrelationId);
+  results.n01ToN02AndN02ProcessToN01 = roundTrip.kind === 'response'
+    && roundTrip.source === 'N01'
+    && roundTrip.target === 'N02'
+    && roundTrip.correlationId === roundTripCorrelationId
+    && roundTrip.payload?.ok === true
+    && roundTrip.payload?.nucleus === 'N02'
+    && roundTrip.payload?.peer === 'N01'
+    && roundTrip.payload?.parentCorrelationId === roundTripCorrelationId
+    && roundTrip.payload?.peerResponse?.ok === true
+    && roundTrip.payload?.peerResponse?.nucleus === 'N01'
+    && roundTrip.payload?.authentication === 'HMAC_VERIFIED';
 
   if (runAi) {
     for (const capability of ['ai.generate', 'ai.multimodal', 'cognitive-processing']) {
@@ -91,7 +105,7 @@ async function run() {
   const failed = Object.entries(results).filter(([, ok]) => !ok);
   console.log(JSON.stringify({
     system: 'SOUL',
-    stage: 'N02_N01_BIDIRECTIONAL_LIVE_E2E',
+    stage: 'N01_N02_PUBLIC_BIDIRECTIONAL_RUNTIME_E2E',
     status: failed.length ? 'FAILED' : 'PASS',
     results,
     checkedAt: new Date().toISOString(),
