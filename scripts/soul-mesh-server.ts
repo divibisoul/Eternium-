@@ -1,6 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import process from "node:process";
-import { isSoulMeshMessage, createSoulMeshMessage, type SoulMeshMessage } from "../src/soul-mesh/SoulMeshProtocol.ts";
 import { SOUL_MESH_CAPABILITIES } from "../src/soul-mesh/SoulMeshCapabilities.ts";
 import meshHandler from "../api/soul-mesh.ts";
 import { n02CapabilityRuntime } from "../src/soul-mesh/N02CapabilityRuntime.ts";
@@ -66,17 +65,6 @@ function discovery() {
   };
 }
 
-function errorFor(message: SoulMeshMessage | undefined, code: string, detail?: string) {
-  return createSoulMeshMessage({
-    source: nucleus,
-    target: message?.source ?? "N01",
-    kind: "error",
-    capability: message?.capability,
-    correlationId: message?.correlationId ?? crypto.randomUUID(),
-    payload: { code, ...(detail ? { detail } : {}) }
-  });
-}
-
 const server = createServer(async (req, res) => {
   try {
     if (req.method === "GET" && req.url === "/ready") {
@@ -140,32 +128,8 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    if (req.method !== "POST" || req.url !== "/mesh/in") {
-      writeJson(res, 404, { code: "NOT_FOUND" });
-      return;
-    }
-
-    let value: unknown;
-    try {
-      value = await readJson(req);
-    } catch (error) {
-      const e = error as Error & { statusCode?: number };
-      writeJson(res, e.statusCode ?? 400, { code: e.message });
-      return;
-    }
-
-    if (!isSoulMeshMessage(value)) {
-      writeJson(res, 400, { code: "INVALID_MESH_MESSAGE" });
-      return;
-    }
-
-    if (value.kind !== "request") {
-      writeJson(res, 400, errorFor(value, "REQUEST_REQUIRED"));
-      return;
-    }
-
-    writeJson(res, 503, errorFor(value, "CAPABILITY_RUNTIME_NOT_BOUND",
-      "Standalone listener is live; native N02 capability handlers remain owned by the existing runtime."));
+    writeJson(res, 404, { code: "NOT_FOUND" });
+    return;
   } catch (error) {
     writeJson(res, 500, { code: "MESH_INTERNAL_ERROR", detail: error instanceof Error ? error.message : String(error) });
   }
