@@ -1,7 +1,6 @@
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 
 const n01Url = (process.env.SOUL_MESH_N01_URL ?? '').trim().replace(/\/$/, '');
-const n01Token = (process.env.SOUL_MESH_N01_TOKEN ?? '').trim();
 const secret = (process.env.SOUL_MESH_HMAC_SECRET ?? '').trim();
 const requireLive = process.env.SOUL_REQUIRE_LIVE_E2E === 'true';
 const runAi = process.env.SOUL_N02_LIVE_AI_E2E !== 'false';
@@ -24,6 +23,37 @@ function unsignedCanonical(message, nonce) {
   });
 }
 
+function verifyResponse(body, capability, correlationId) {
+  if (!body || body.protocol !== 'soul-mesh/1' || body.contractVersion !== '1.1.0'
+    || typeof body.id !== 'string' || !body.id
+    || body.source !== 'N01' || body.target !== 'N02'
+    || body.capability !== capability
+    || body.correlationId !== correlationId
+    || !['response', 'error'].includes(body.kind)
+    || !Number.isFinite(body.timestamp) || Math.abs(Date.now() - body.timestamp) > 30_000) {
+    throw new Error('N02_E2E_RESPONSE_CONTRACT_INVALID');
+  }
+  const nonce = String(body.nonce ?? body.meta?.nonce ?? '').trim();
+  const supplied = String(body.hmac ?? '').trim();
+  if (!nonce || !/^[0-9a-f]{64}$/i.test(supplied)) throw new Error('N02_E2E_RESPONSE_HMAC_MISSING');
+  const canonical = JSON.stringify({
+    version: '1.0',
+    contractVersion: body.contractVersion,
+    messageId: body.id,
+    source: body.source,
+    target: body.target,
+    timestamp: body.timestamp,
+    nonce,
+    correlationId: body.correlationId,
+    type: body.kind === 'error' ? 'ERROR' : 'TASK_RESULT',
+    payload: { capability: body.capability ?? '', payload: body.payload ?? {} },
+  });
+  const expected = createHmac('sha256', secret).update(canonical, 'utf8').digest('hex');
+  const actual = Buffer.from(supplied, 'hex');
+  const wanted = Buffer.from(expected, 'hex');
+  if (actual.length !== wanted.length || !timingSafeEqual(actual, wanted)) throw new Error('N02_E2E_RESPONSE_HMAC_INVALID');
+}
+
 async function postN01(capability, payload, correlationId = randomUUID()) {
   if (!n01Url) throw new Error('N01_URL_REQUIRED');
   const nonce = randomUUID().replaceAll('-', '').padEnd(32, '0').slice(0, 32);
@@ -41,14 +71,9 @@ async function postN01(capability, payload, correlationId = randomUUID()) {
     meta: { runtime: 'Eternium-', transport: 'HTTP', encoding: 'json', version: '1.1.0', nonce, traceId: correlationId },
   };
   const headers = { 'content-type': 'application/json', accept: 'application/json', 'x-soul-correlation-id': correlationId };
-  if (secret) {
-    headers['x-soul-mesh-nonce'] = nonce;
-    headers['x-soul-mesh-hmac'] = createHmac('sha256', secret).update(unsignedCanonical(message, nonce), 'utf8').digest('hex');
-  } else if (n01Token) {
-    headers.authorization = 'Bearer ' + n01Token;
-  } else {
-    throw new Error('N02_E2E_AUTH_REQUIRED');
-  }
+  if (!secret) throw new Error('N02_E2E_HMAC_SECRET_REQUIRED');
+  headers['x-soul-mesh-nonce'] = nonce;
+  headers['x-soul-mesh-hmac'] = createHmac('sha256', secret).update(unsignedCanonical(message, nonce), 'utf8').digest('hex');
 
   const response = await fetch(n01Url + '/api/soul-mesh', {
     method: 'POST',
@@ -57,8 +82,8 @@ async function postN01(capability, payload, correlationId = randomUUID()) {
     signal: AbortSignal.timeout(20_000),
   });
   const body = await response.json().catch(() => null);
-  if (!response.ok) throw new Error('N01_E2E_HTTP_' + response.status + ':' + JSON.stringify(body));
-  if (!body || body.correlationId !== correlationId) throw new Error('N01_E2E_CORRELATION_MISMATCH');
+  if (body) verifyResponse(body, capability, correlationId);
+  if (!response.ok || body?.kind === 'error') throw new Error('N01_E2E_HTTP_' + response.status + ':' + JSON.stringify(body));
   return body;
 }
 
