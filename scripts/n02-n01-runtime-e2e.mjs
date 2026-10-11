@@ -124,10 +124,13 @@ try {
     body: JSON.stringify({ capability: 'mesh.peer.ping', payload: { probe: 'runtime-pair-ci' }, correlationId }),
   });
   const forwarded = roundTrip?.result;
-  const n02Output = forwarded?.output;
+  const n02AgentEnvelope = forwarded?.output;
+  const n02Output = n02AgentEnvelope?.result;
   if (!roundTripResponse.ok || roundTrip?.ok !== true || roundTrip?.nucleus !== 'N01'
     || roundTrip?.correlationId !== correlationId
     || forwarded?.owner !== 'N02' || forwarded?.execution !== 'remote'
+    || n02AgentEnvelope?.status !== 'ok' || n02AgentEnvelope?.nucleus !== 'N02'
+    || n02AgentEnvelope?.capability !== 'mesh.peer.ping' || n02AgentEnvelope?.correlationId !== correlationId
     || n02Output?.ok !== true || n02Output?.nucleus !== 'N02' || n02Output?.peer !== 'N01'
     || n02Output?.parentCorrelationId !== correlationId
     || n02Output?.peerResponse?.ok !== true || n02Output?.peerResponse?.nucleus !== 'N01'
