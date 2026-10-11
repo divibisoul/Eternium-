@@ -138,6 +138,48 @@ try {
     throw new Error('Authenticated bidirectional N01↔N02 runtime route failed: ' + JSON.stringify(roundTrip));
   }
 
+  // Legacy v1 envelope compatibility: authenticate a request arriving through N01's
+  // preserved legacy surface, require it to translate into the real modern N02 route,
+  // and validate the legacy response HMAC rather than treating HTTP 200 as sufficient.
+  const legacyCorrelationId = randomUUID();
+  const legacyUnsigned = {
+    version: '1.0',
+    contractVersion: '1.1.0',
+    messageId: randomUUID(),
+    source: 'N02',
+    target: 'N01',
+    timestamp: Date.now(),
+    nonce: randomUUID(),
+    correlationId: legacyCorrelationId,
+    type: 'CAPABILITY_REQUEST',
+    payload: { capability: 'mesh.peer.ping', payload: { probe: 'legacy-v1-compatibility' } },
+  };
+  const legacyHmac = createHmac('sha256', sharedTestSecret)
+    .update(JSON.stringify(legacyUnsigned), 'utf8')
+    .digest('hex');
+  const { response: legacyResponse, body: legacyBody } = await jsonResponse(n01Url + '/api/soul-mesh', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-correlation-id': legacyCorrelationId },
+    body: JSON.stringify({ ...legacyUnsigned, hmac: legacyHmac }),
+  });
+  const { hmac: legacyResponseHmac, ...legacyResponseUnsigned } = legacyBody ?? {};
+  const expectedLegacyResponseHmac = createHmac('sha256', sharedTestSecret)
+    .update(JSON.stringify(legacyResponseUnsigned), 'utf8')
+    .digest('hex');
+  const actualLegacyResponseHmac = Buffer.from(String(legacyResponseHmac ?? ''), 'hex');
+  const expectedLegacyResponseHmacBytes = Buffer.from(expectedLegacyResponseHmac, 'hex');
+  if (!legacyResponse.ok || legacyBody?.version !== '1.0' || legacyBody?.contractVersion !== '1.1.0'
+    || legacyBody?.source !== 'N01' || legacyBody?.target !== 'N02'
+    || legacyBody?.correlationId !== legacyCorrelationId || legacyBody?.type !== 'TASK_RESULT'
+    || actualLegacyResponseHmac.length !== expectedLegacyResponseHmacBytes.length
+    || !timingSafeEqual(actualLegacyResponseHmac, expectedLegacyResponseHmacBytes)
+    || legacyBody?.payload?.status !== 'ok' || legacyBody?.payload?.nucleus !== 'N02'
+    || legacyBody?.payload?.correlationId !== legacyCorrelationId
+    || legacyBody?.payload?.result?.ok !== true || legacyBody?.payload?.result?.peer !== 'N01'
+    || legacyBody?.payload?.result?.authentication !== 'HMAC_VERIFIED') {
+    throw new Error('N01 legacy v1 → modern N02 route failed contract/HMAC/runtime assertions: ' + JSON.stringify(legacyBody));
+  }
+
   console.log(JSON.stringify({
     system: 'SOUL',
     stage: 'N01_N02_REAL_PROCESS_PAIR_E2E',
@@ -148,6 +190,7 @@ try {
       n02Health: n02Health.nucleus,
       n02CapabilityRuntimeBound: true,
       n01ToN02: { status: 'PASS', targetCapability: 'mesh.peer.ping', hmacVerified: true },
+      legacyEnvelopeCompatibility: { status: 'PASS', requestAuthentication: 'HMAC_ACCEPTED', responseAuthentication: 'HMAC_VERIFIED', runtimeExecuted: true },
       n02ProcessToN01: {
         status: 'PASS',
         peer: n02Output.peerResponse.nucleus,
