@@ -24,6 +24,10 @@ jobs:
       - run: npm install --legacy-peer-deps --no-audit --no-fund
       - name: Install the N01 runtime dependencies
         run: npm install --prefix .integration/n01 --omit=dev --legacy-peer-deps --no-audit --no-fund
+      - name: N01↔N02 cross-repository capability ownership contract
+        env:
+          SOUL_N01_WORKDIR: ${{ github.workspace }}/.integration/n01
+        run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs scripts/n02-n01-capability-contract.mjs
       - name: N01↔N02 authenticated real-process E2E
         env:
           SOUL_N01_WORKDIR: ${{ github.workspace }}/.integration/n01
