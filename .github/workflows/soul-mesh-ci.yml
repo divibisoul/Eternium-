@@ -12,10 +12,22 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout the active N01 runtime branch for process-pair E2E
+        uses: actions/checkout@v4
+        with:
+          repository: divibisoul/aeternum-core-29
+          ref: fix/n01-active-mesh-channel-contract
+          path: .integration/n01
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Install the N01 runtime dependencies
+        run: npm install --prefix .integration/n01 --omit=dev --legacy-peer-deps --no-audit --no-fund
+      - name: N01↔N02 authenticated real-process E2E
+        env:
+          SOUL_N01_WORKDIR: ${{ github.workspace }}/.integration/n01
+        run: node scripts/n02-n01-runtime-e2e.mjs
       - name: Typecheck Mesh adapter
         run: npx tsc -p tsconfig.mesh.json --noEmit
       - name: Gemini reliability tests
@@ -33,11 +45,13 @@ jobs:
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02TransportIntegrity.test.ts
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02Lote3Capabilities.test.ts
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02PeerClientHmac.test.ts
+          node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02PeerConnectivity.test.ts
       - name: N02 restored boundary regressions
         run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs api/n02-reintegration.test.ts
       - name: N02 Mesh resilience regressions
         run: npm run test:mesh:resilience
-      - name: N01↔N02 live E2E gate (fail-closed, real runtime required)
+      - name: N01↔N02 public deployment E2E (commissioning gate)
+        if: ${{ vars.SOUL_MESH_N01_URL != '' }}
         env:
           SOUL_MESH_N01_URL: ${{ vars.SOUL_MESH_N01_URL }}
           SOUL_MESH_HMAC_SECRET: ${{ secrets.SOUL_MESH_HMAC_SECRET }}
