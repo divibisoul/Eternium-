@@ -9,7 +9,9 @@
     "preview": "vite preview",
     "lint": "tsc --noEmit",
     "test:mesh:resilience": "node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs api/soul-mesh/resilience.test.ts",
-    "validate:capability-document": "node scripts/validate-capability-document.mjs"
+    "validate:capability-document": "node scripts/validate-capability-document.mjs",
+    "test:mesh:hmac": "node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02PeerClientHmac.test.ts",
+    "test:mesh:compatibility": "node --test mesh/compatibility.test.mjs"
   },
   "dependencies": {
     "react-dom": "^19.1.0",

@@ -43,7 +43,7 @@ test('N02 peer client generates nonce/HMAC and validates correlated N01 HTTP res
   const previousSecret = process.env.SOUL_MESH_HMAC_SECRET;
   const previousFetch = globalThis.fetch;
 
-  const secret = 'n02-lote3-hmac-secret-2026';
+  const secret = 'n02-lote3-hmac-secret-2026-32-byte-key';
   process.env.SOUL_MESH_N01_URL = 'http://n01.example.test/api/soul-mesh';
   process.env.SOUL_MESH_HMAC_SECRET = secret;
 
@@ -94,6 +94,28 @@ test('N02 peer client generates nonce/HMAC and validates correlated N01 HTTP res
     assert.equal(response.source, 'N01');
     assert.equal(response.target, 'N02');
     assert.equal((response.payload as Record<string, unknown>).ok, true);
+  } finally {
+    globalThis.fetch = previousFetch;
+    if (previousUrl === undefined) delete process.env.SOUL_MESH_N01_URL;
+    else process.env.SOUL_MESH_N01_URL = previousUrl;
+    if (previousSecret === undefined) delete process.env.SOUL_MESH_HMAC_SECRET;
+    else process.env.SOUL_MESH_HMAC_SECRET = previousSecret;
+  }
+});
+
+test('N02 peer client fails closed for HMAC secrets shorter than 32 bytes', async () => {
+  const previousUrl = process.env.SOUL_MESH_N01_URL;
+  const previousSecret = process.env.SOUL_MESH_HMAC_SECRET;
+  const previousFetch = globalThis.fetch;
+  process.env.SOUL_MESH_N01_URL = 'http://n01.example.test/api/soul-mesh';
+  process.env.SOUL_MESH_HMAC_SECRET = 'short-secret';
+  globalThis.fetch = async () => { throw new Error('FETCH_MUST_NOT_RUN_WITH_WEAK_HMAC_KEY'); };
+  try {
+    const { requestPeerCapability } = await import('../../api/soul-mesh/peer-client.ts');
+    await assert.rejects(
+      () => requestPeerCapability('N01', 'mesh.ping', { probe: 'weak-key' }),
+      /SOUL_MESH_HMAC_SECRET_TOO_SHORT/,
+    );
   } finally {
     globalThis.fetch = previousFetch;
     if (previousUrl === undefined) delete process.env.SOUL_MESH_N01_URL;
