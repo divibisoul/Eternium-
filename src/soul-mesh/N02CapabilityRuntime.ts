@@ -53,6 +53,35 @@ for (const [capability, handler] of Object.entries(handlers)) {
   });
 }
 
+if (!n02CapabilityRuntime.registry.has('mesh.peer.ping')) {
+  throw new Error('N02_CAPABILITY_NOT_DECLARED:mesh.peer.ping');
+}
+n02CapabilityRuntime.register('mesh.peer.ping', async message => {
+  const peerResponse = await requestPeerCapability(
+    'N01',
+    'mesh.ping',
+    { probe: 'n02-runtime-to-n01', parentCorrelationId: message.correlationId },
+    5000,
+    0,
+  );
+  const peerPayload = peerResponse.payload && typeof peerResponse.payload === 'object'
+    ? peerResponse.payload as Record<string, unknown>
+    : {};
+  if (peerResponse.kind !== 'response' || peerPayload.ok !== true || peerPayload.nucleus !== 'N01') {
+    throw new Error('N02_N01_PEER_PROBE_FAILED');
+  }
+  return {
+    ok: true,
+    nucleus: 'N02',
+    peer: 'N01',
+    parentCorrelationId: message.correlationId,
+    peerCorrelationId: peerResponse.correlationId,
+    peerResponse: peerPayload,
+    transport: 'HTTP',
+    authentication: process.env.SOUL_MESH_HMAC_SECRET?.trim() ? 'HMAC_VERIFIED' : 'NOT_CONFIGURED',
+  };
+});
+
 /** N02 is an independent AI nucleus. Agents expose only capabilities actually registered above. */
 export const n02AgentRegistry = new SoulMeshAgentRegistry();
 
