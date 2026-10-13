@@ -1,4 +1,4 @@
-import { createHmac, randomUUID } from 'node:crypto';
+import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto';
 
 const n01Url = (process.env.SOUL_MESH_N01_URL ?? '').trim().replace(/\/$/, '');
 const n01Token = (process.env.SOUL_MESH_N01_TOKEN ?? '').trim();
@@ -22,6 +22,51 @@ function unsignedCanonical(message, nonce) {
     meta: message.meta ?? null,
     nonce,
   });
+}
+
+function canonicalN01Response(body, nonce) {
+  return JSON.stringify({
+    version: '1.0',
+    contractVersion: body.contractVersion,
+    messageId: body.id,
+    source: body.source,
+    target: body.target,
+    timestamp: body.timestamp,
+    nonce,
+    correlationId: body.correlationId,
+    type: body.kind === 'error' ? 'ERROR' : 'TASK_RESULT',
+    payload: { capability: body.capability ?? '', payload: body.payload ?? {} },
+  });
+}
+
+function verifyN01Response(body, correlationId) {
+  if (!body || body.protocol !== 'soul-mesh/1' || body.contractVersion !== '1.1.0') {
+    throw new Error('N01_E2E_RESPONSE_CONTRACT_INVALID');
+  }
+  if (body.source !== 'N01' || body.target !== 'N02') throw new Error('N01_E2E_RESPONSE_ROUTE_INVALID');
+  if (body.correlationId !== correlationId) throw new Error('N01_E2E_CORRELATION_MISMATCH');
+  if (!body.id || !['response', 'error'].includes(body.kind)) throw new Error('N01_E2E_RESPONSE_SHAPE_INVALID');
+  if (!Number.isFinite(body.timestamp) || Math.abs(Date.now() - body.timestamp) > 30_000) {
+    throw new Error('N01_E2E_RESPONSE_TIMESTAMP_INVALID');
+  }
+
+  // This test uses a per-run random HMAC key. When HMAC is enabled, a reply is
+  // not accepted based on HTTP 200 or correlation ID alone: authenticate it.
+  if (secret) {
+    if (Buffer.byteLength(secret, 'utf8') < 32) throw new Error('N02_E2E_HMAC_SECRET_TOO_SHORT');
+    const nonce = String(body.nonce ?? body.meta?.nonce ?? '').trim();
+    const supplied = String(body.hmac ?? '').trim();
+    if (!nonce || !/^[0-9a-f]{64}$/i.test(supplied)) throw new Error('N01_E2E_RESPONSE_AUTH_MISSING');
+    const expected = createHmac('sha256', secret)
+      .update(canonicalN01Response(body, nonce), 'utf8')
+      .digest('hex');
+    const actualBytes = Buffer.from(supplied, 'hex');
+    const expectedBytes = Buffer.from(expected, 'hex');
+    if (actualBytes.length !== expectedBytes.length || !timingSafeEqual(actualBytes, expectedBytes)) {
+      throw new Error('N01_E2E_RESPONSE_HMAC_INVALID');
+    }
+  }
+  return { authenticated: Boolean(secret), correlationMatched: true, source: body.source, target: body.target };
 }
 
 async function postN01(capability, payload, correlationId = randomUUID()) {
@@ -58,7 +103,7 @@ async function postN01(capability, payload, correlationId = randomUUID()) {
   });
   const body = await response.json().catch(() => null);
   if (!response.ok) throw new Error('N01_E2E_HTTP_' + response.status + ':' + JSON.stringify(body));
-  if (!body || body.correlationId !== correlationId) throw new Error('N01_E2E_CORRELATION_MISMATCH');
+  verifyN01Response(body, correlationId);
   return body;
 }
 
@@ -91,7 +136,7 @@ async function run() {
   const failed = Object.entries(results).filter(([, ok]) => !ok);
   console.log(JSON.stringify({
     system: 'SOUL',
-    stage: 'N02_N01_BIDIRECTIONAL_LIVE_E2E',
+    stage: runAi ? 'N02_N01_BIDIRECTIONAL_LIVE_E2E' : 'N02_TO_N01_AUTHENTICATED_HTTP_E2E',
     status: failed.length ? 'FAILED' : 'PASS',
     results,
     checkedAt: new Date().toISOString(),
