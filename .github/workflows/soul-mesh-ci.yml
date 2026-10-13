@@ -57,10 +57,13 @@ jobs:
         run: |
           set -euo pipefail
           export SOUL_MESH_HMAC_SECRET="$(node -e "process.stdout.write(require('node:crypto').randomBytes(48).toString('hex'))")"
-          SOUL_MESH_N01_PORT=8080 \
-          SOUL_MESH_N01_HOST=127.0.0.1 \
-          SOUL_MESH_SECRET="$SOUL_MESH_HMAC_SECRET" \
-            node n01-runtime/scripts/soul-mesh-server-entry.mjs > "$RUNNER_TEMP/n01-mesh.log" 2>&1 &
+          (
+            cd n01-runtime
+            SOUL_MESH_N01_PORT=8080 \
+            SOUL_MESH_N01_HOST=127.0.0.1 \
+            SOUL_MESH_SECRET="$SOUL_MESH_HMAC_SECRET" \
+              node scripts/soul-mesh-server-entry.mjs
+          ) > "$RUNNER_TEMP/n01-mesh.log" 2>&1 &
           n01_pid=$!
           cleanup() {
             kill "$n01_pid" 2>/dev/null || true
