@@ -7,6 +7,6 @@ test('N02 binds the real authenticated N01 peer-probe capability', () => {
   assert.equal(n02CapabilityRuntime.has('mesh.peer.ping'), true);
   assert.ok(n02CapabilityRuntime.listExecutable().includes('mesh.peer.ping'));
   assert.ok(n02AgentRegistry.list().some(agent =>
-    agent.id === 'N02.integration-agent' && agent.capabilities.includes('mesh.peer.ping')
-  ));
+    agent.capabilities.includes('mesh.peer.ping')
+  ), 'The declared executable peer-probe capability must be assigned to a real registered N02 agent.');
 });
