@@ -16,6 +16,22 @@ jobs:
         with:
           node-version: 22
       - run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Checkout pinned N01 active Mesh runtime for process-pair E2E
+        uses: actions/checkout@v4
+        with:
+          repository: divibisoul/aeternum-core-29
+          ref: 98ebd560ecc2c4bf8512de65b0f2d1b80db266d0
+          path: .integration/n01
+      - name: Install N01 runtime dependencies for process-pair E2E
+        run: npm install --prefix .integration/n01 --omit=dev --legacy-peer-deps --no-audit --no-fund
+      - name: N01↔N02 cross-repository capability ownership contract
+        env:
+          SOUL_N01_WORKDIR: ${{ github.workspace }}/.integration/n01
+        run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs scripts/n02-n01-capability-contract.mjs
+      - name: N01↔N02 authenticated real-process E2E
+        env:
+          SOUL_N01_WORKDIR: ${{ github.workspace }}/.integration/n01
+        run: node scripts/n02-n01-runtime-e2e.mjs
       - name: Typecheck Mesh adapter
         run: npx tsc -p tsconfig.mesh.json --noEmit
       - name: Gemini reliability tests
@@ -33,6 +49,7 @@ jobs:
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02TransportIntegrity.test.ts
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02Lote3Capabilities.test.ts
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02PeerClientHmac.test.ts
+          node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02PeerConnectivity.test.ts
       - name: N02 restored boundary regressions
         run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs api/n02-reintegration.test.ts
       - name: N02 legacy Mesh adapter regressions
@@ -87,5 +104,7 @@ jobs:
             exit 1
           fi
           node scripts/n02-n01-live-e2e.mjs
+      - name: Soul Mesh listener smoke
+        run: npm run mesh:listener:check
       - name: Build web runtime
         run: npm run build
