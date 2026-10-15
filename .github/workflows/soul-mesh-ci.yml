@@ -16,6 +16,22 @@ jobs:
         with:
           node-version: 22
       - run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Checkout pinned N01 active Mesh runtime for process-pair E2E
+        uses: actions/checkout@v4
+        with:
+          repository: divibisoul/aeternum-core-29
+          ref: 98ebd560ecc2c4bf8512de65b0f2d1b80db266d0
+          path: .integration/n01
+      - name: Install N01 runtime dependencies for process-pair E2E
+        run: npm install --prefix .integration/n01 --omit=dev --legacy-peer-deps --no-audit --no-fund
+      - name: N01↔N02 cross-repository capability ownership contract
+        env:
+          SOUL_N01_WORKDIR: ${{ github.workspace }}/.integration/n01
+        run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs scripts/n02-n01-capability-contract.mjs
+      - name: N01↔N02 authenticated real-process E2E
+        env:
+          SOUL_N01_WORKDIR: ${{ github.workspace }}/.integration/n01
+        run: node scripts/n02-n01-runtime-e2e.mjs
       - name: Typecheck Mesh adapter
         run: npx tsc -p tsconfig.mesh.json --noEmit
       - name: Gemini reliability tests
@@ -33,11 +49,62 @@ jobs:
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02TransportIntegrity.test.ts
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02Lote3Capabilities.test.ts
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02PeerClientHmac.test.ts
+          node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02PeerConnectivity.test.ts
       - name: N02 restored boundary regressions
         run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs api/n02-reintegration.test.ts
+      - name: N02 legacy Mesh adapter regressions
+        run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs lib/soul-mesh/endpoint.test.ts
       - name: N02 Mesh resilience regressions
         run: npm run test:mesh:resilience
-      - name: N01↔N02 live E2E gate (environment-gated)
-        run: node scripts/n02-n01-live-e2e.mjs
+      - name: Checkout pinned N01 runtime for real HTTP integration
+        uses: actions/checkout@v4
+        with:
+          repository: divibisoul/aeternum-core-29
+          ref: d5932bbe9e91127d497e86acd32bbb305e0c14d6
+          path: n01-runtime
+          submodules: false
+          persist-credentials: false
+      - name: Verify pinned N01 runtime source
+        run: test "$(git -C n01-runtime rev-parse HEAD)" = "d5932bbe9e91127d497e86acd32bbb305e0c14d6"
+      - name: N02 to N01 authenticated HTTP E2E (real N01 server; fail closed)
+        env:
+          SOUL_MESH_N01_URL: http://127.0.0.1:8080
+          SOUL_REQUIRE_LIVE_E2E: 'true'
+          SOUL_N02_LIVE_AI_E2E: 'false'
+        run: |
+          set -euo pipefail
+          export SOUL_MESH_HMAC_SECRET="$(node -e "process.stdout.write(require('node:crypto').randomBytes(48).toString('hex'))")"
+          (
+            cd n01-runtime
+            SOUL_MESH_N01_PORT=8080 \
+            SOUL_MESH_N01_HOST=127.0.0.1 \
+            SOUL_MESH_SECRET="$SOUL_MESH_HMAC_SECRET" \
+              node scripts/soul-mesh-server-entry.mjs
+          ) > "$RUNNER_TEMP/n01-mesh.log" 2>&1 &
+          n01_pid=$!
+          cleanup() {
+            kill "$n01_pid" 2>/dev/null || true
+            wait "$n01_pid" 2>/dev/null || true
+            if [ "${EXIT_STATUS:-0}" -ne 0 ]; then cat "$RUNNER_TEMP/n01-mesh.log"; fi
+          }
+          EXIT_STATUS=0
+          trap 'EXIT_STATUS=$?; cleanup' EXIT
+          ready=false
+          for _ in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8080/api/soul-mesh/health >/dev/null; then
+              ready=true
+              break
+            fi
+            sleep 1
+          done
+          if [ "$ready" != true ]; then
+            EXIT_STATUS=1
+            echo "N01_REAL_RUNTIME_START_FAILED"
+            cat "$RUNNER_TEMP/n01-mesh.log"
+            exit 1
+          fi
+          node scripts/n02-n01-live-e2e.mjs
+      - name: Soul Mesh listener smoke
+        run: npm run mesh:listener:check
       - name: Build web runtime
         run: npm run build

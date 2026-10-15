@@ -90,7 +90,7 @@ function canonical(m: MeshMessage, nonce: string): string {
 
 function verifyHmac(m: MeshMessage, req: any): boolean {
   const secret = process.env.SOUL_MESH_HMAC_SECRET?.trim();
-  if (!secret) return false;
+  if (!secret || Buffer.byteLength(secret, 'utf8') < 32) return false;
   const nonce = String(m.nonce ?? m.meta?.nonce ?? req.headers['x-soul-mesh-nonce'] ?? '').trim();
   const supplied = String(req.headers['x-soul-mesh-hmac'] ?? '').trim();
   const headerNonce = String(req.headers['x-soul-mesh-nonce'] ?? '').trim();
@@ -172,6 +172,7 @@ function canonicalLegacyResponse(body: {
 }
 
 function signEnvelope(body: any, nonce: string, secret: string): string {
+  if (Buffer.byteLength(secret, 'utf8') < 32) throw new Error('SOUL_MESH_HMAC_SECRET_TOO_SHORT');
   return createHmac('sha256', secret).update(canonicalLegacyResponse(body, nonce), 'utf8').digest('hex');
 }
 
