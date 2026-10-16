@@ -1,7 +1,7 @@
 name: SOUL Integration CI - N02
 on:
   push:
-    branches: [main]
+    branches: [main, feat/n02-soul25-integration-20261003]
   pull_request:
 permissions:
   contents: read
@@ -12,6 +12,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Validate identity
         run: test -s SOUL_ECOSYSTEM.md
       - name: Validate submodule paths
@@ -21,16 +24,11 @@ jobs:
           if test -f .gitmodules; then
             git config -f .gitmodules --get-regexp '^submodule\..*\.path$' | awk '{print $2}' | while read p; do test -e "$p"; done
           fi
-      - name: Validate N07 registry
-        if: github.event.repository.name == 'Orquestrador-'
-        run: |
-          python - <<'PY'
-          import json
-          d=json.load(open('integrations/external-capabilities.json'))
-          assert len(d['repositories']) == 16
-          for x in d['repositories']:
-              assert x['source'].startswith('https://github.com/')
-              assert x['revision']
-              assert x['targets']
-          print('16 external integrations: VALID')
-          PY
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Validate N02 25-source fabric
+        run: npx --yes tsx --test src/soul-mesh/N02ExternalCapabilityFabric.test.ts
+      - name: Validate N02 external inference boundaries
+        run: npx --yes tsx --test src/soul-mesh/N02ExternalInferenceBridge.test.ts
+      - name: Typecheck
+        run: npm run lint
