@@ -4,12 +4,8 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  push:
-    branches:
-      - fix/n02-reintegration-broad-audit-2026-09-29
-  pull_request:
-    branches: [main]
   workflow_dispatch:
+
 permissions:
   contents: read
 jobs:

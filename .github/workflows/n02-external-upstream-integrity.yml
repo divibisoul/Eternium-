@@ -5,18 +5,7 @@ concurrency:
   cancel-in-progress: true
 
 on:
-  push:
-    paths:
-      - ".gitmodules"
-      - "docs/N02-EXTERNAL-OPEN-SOURCE-REGISTRY.json"
-      - "external/upstream/**"
-      - ".github/workflows/n02-external-upstream-integrity.yml"
-  pull_request:
-    paths:
-      - ".gitmodules"
-      - "docs/N02-EXTERNAL-OPEN-SOURCE-REGISTRY.json"
-      - "external/upstream/**"
-      - ".github/workflows/n02-external-upstream-integrity.yml"
+  workflow_dispatch:
 
 jobs:
   verify-submodules:
