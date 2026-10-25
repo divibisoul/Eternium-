@@ -12,12 +12,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Checkout the active N01 runtime branch for process-pair E2E
+      - name: Checkout the current N01 fusion candidate for process-pair E2E
         uses: actions/checkout@v4
         with:
           repository: divibisoul/aeternum-core-29
-          ref: fix/n01-active-mesh-channel-contract
+          ref: d6164048798945f2ab7ccffd4f91454ebb02fc8f
           path: .integration/n01
+      - name: Verify exact N01 integration candidate
+        run: test "$(git -C .integration/n01 rev-parse HEAD)" = "d6164048798945f2ab7ccffd4f91454ebb02fc8f"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
