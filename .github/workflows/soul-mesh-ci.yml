@@ -12,10 +12,28 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Checkout the current N01 fusion candidate for process-pair E2E
+        uses: actions/checkout@v4
+        with:
+          repository: divibisoul/aeternum-core-29
+          ref: ba34ba9ed1bc66e7db6e67affe44d5acd0632699
+          path: .integration/n01
+      - name: Verify exact N01 integration candidate
+        run: test "$(git -C .integration/n01 rev-parse HEAD)" = "ba34ba9ed1bc66e7db6e67affe44d5acd0632699"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
       - run: npm install --legacy-peer-deps --no-audit --no-fund
+      - name: Install the N01 runtime dependencies
+        run: npm install --prefix .integration/n01 --omit=dev --legacy-peer-deps --no-audit --no-fund
+      - name: N01↔N02 cross-repository capability ownership contract
+        env:
+          SOUL_N01_WORKDIR: ${{ github.workspace }}/.integration/n01
+        run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs scripts/n02-n01-capability-contract.mjs
+      - name: N01↔N02 authenticated real-process E2E
+        env:
+          SOUL_N01_WORKDIR: ${{ github.workspace }}/.integration/n01
+        run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs scripts/n02-n01-runtime-e2e.mjs
       - name: Typecheck Mesh adapter
         run: npx tsc -p tsconfig.mesh.json --noEmit
       - name: Gemini reliability tests
@@ -33,11 +51,17 @@ jobs:
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02TransportIntegrity.test.ts
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02Lote3Capabilities.test.ts
           node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02PeerClientHmac.test.ts
+          node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs src/soul-mesh/N02PeerConnectivity.test.ts
       - name: N02 restored boundary regressions
         run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs api/n02-reintegration.test.ts
       - name: N02 Mesh resilience regressions
         run: npm run test:mesh:resilience
-      - name: N01↔N02 live E2E gate (environment-gated)
+      - name: N01↔N02 public deployment E2E (commissioning gate)
+        if: ${{ vars.SOUL_MESH_N01_URL != '' }}
+        env:
+          SOUL_MESH_N01_URL: ${{ vars.SOUL_MESH_N01_URL }}
+          SOUL_MESH_HMAC_SECRET: ${{ secrets.SOUL_MESH_HMAC_SECRET }}
+          SOUL_REQUIRE_LIVE_E2E: 'true'
         run: node scripts/n02-n01-live-e2e.mjs
       - name: Soul Mesh listener smoke
         run: npm run mesh:listener:check

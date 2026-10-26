@@ -1,10 +1,11 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import process from "node:process";
-import { isSoulMeshMessage, createSoulMeshMessage, type SoulMeshMessage } from "../src/soul-mesh/SoulMeshProtocol.ts";
 import { SOUL_MESH_CAPABILITIES } from "../src/soul-mesh/SoulMeshCapabilities.ts";
+import meshHandler from "../api/soul-mesh.ts";
+import { n02CapabilityRuntime } from "../src/soul-mesh/N02CapabilityRuntime.ts";
 
 const HOST = process.env.SOUL_MESH_HOST ?? "0.0.0.0";
-const PORT = Number(process.env.SOUL_MESH_PORT ?? 3020);
+const PORT = Number(process.env.SOUL_MESH_PORT ?? process.env.PORT ?? 3020);
 const MAX_BYTES = Number(process.env.SOUL_MESH_MAX_REQUEST_BYTES ?? 2 * 1024 * 1024);
 const nucleus = "N02" as const;
 
@@ -45,7 +46,7 @@ function discovery() {
     contractVersion: "1.1.0",
     nucleus,
     status: "AVAILABLE",
-    evidenceState: "PROJECTED",
+    evidenceState: "RUNTIME_BOUND",
     capabilities: SOUL_MESH_CAPABILITIES.map(capability => ({
       id: capability.id,
       version: capability.version,
@@ -57,21 +58,11 @@ function discovery() {
       tools: capability.tools ?? [],
       context: capability.context ?? []
     })),
-    executableCapabilities: [],
-    transport: { protocol: "http", endpoint: "http://" + HOST + ":" + PORT + "/mesh/in" },
+    executableCapabilities: n02CapabilityRuntime.listExecutable(),
+    runtimeBound: true,
+    transport: { protocol: "http", endpoint: "http://" + HOST + ":" + PORT + "/api/soul-mesh" },
     runtime: "Eternium-N02"
   };
-}
-
-function errorFor(message: SoulMeshMessage | undefined, code: string, detail?: string) {
-  return createSoulMeshMessage({
-    source: nucleus,
-    target: message?.source ?? "N01",
-    kind: "error",
-    capability: message?.capability,
-    correlationId: message?.correlationId ?? crypto.randomUUID(),
-    payload: { code, ...(detail ? { detail } : {}) }
-  });
 }
 
 const server = createServer(async (req, res) => {
@@ -107,32 +98,38 @@ const server = createServer(async (req, res) => {
       return;
     }
 
-    if (req.method !== "POST" || req.url !== "/mesh/in") {
-      writeJson(res, 404, { code: "NOT_FOUND" });
+    if (req.method === "POST" && (req.url === "/api/soul-mesh" || req.url === "/mesh/in")) {
+      let value: unknown;
+      try {
+        value = await readJson(req);
+      } catch (error) {
+        const e = error as Error & { statusCode?: number };
+        writeJson(res, e.statusCode ?? 400, { code: e.message });
+        return;
+      }
+
+      let responseStatus = 200;
+      const responseAdapter = {
+        status(status: number) {
+          responseStatus = status;
+          return this;
+        },
+        json(body: unknown) {
+          writeJson(res, responseStatus, body);
+          return this;
+        }
+      };
+
+      await meshHandler({
+        method: req.method,
+        headers: req.headers,
+        body: value
+      }, responseAdapter as any);
       return;
     }
 
-    let value: unknown;
-    try {
-      value = await readJson(req);
-    } catch (error) {
-      const e = error as Error & { statusCode?: number };
-      writeJson(res, e.statusCode ?? 400, { code: e.message });
-      return;
-    }
-
-    if (!isSoulMeshMessage(value)) {
-      writeJson(res, 400, { code: "INVALID_MESH_MESSAGE" });
-      return;
-    }
-
-    if (value.kind !== "request") {
-      writeJson(res, 400, errorFor(value, "REQUEST_REQUIRED"));
-      return;
-    }
-
-    writeJson(res, 503, errorFor(value, "CAPABILITY_RUNTIME_NOT_BOUND",
-      "Standalone listener is live; native N02 capability handlers remain owned by the existing runtime."));
+    writeJson(res, 404, { code: "NOT_FOUND" });
+    return;
   } catch (error) {
     writeJson(res, 500, { code: "MESH_INTERNAL_ERROR", detail: error instanceof Error ? error.message : String(error) });
   }
@@ -146,7 +143,8 @@ server.listen(PORT, HOST, () => {
     port: PORT,
     health: "/mesh/health",
     discovery: "/mesh/discovery",
-    ingress: "/mesh/in"
+    ingress: "/api/soul-mesh",
+    compatibilityIngress: "/mesh/in"
   }));
 });
 

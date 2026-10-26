@@ -22,6 +22,10 @@ export const SOUL_MESH_CAPABILITIES: SoulMeshCapability[] = [
     request: true, response: true, events: false, owner: 'N02', context: [], tools: []
   },
   {
+    id: 'mesh.peer.ping', version: '1.0', description: 'Authenticated N02 runtime probe to verify live bidirectional Mesh connectivity with N01',
+    request: true, response: true, events: false, owner: 'N02', context: ['mesh', 'diagnostics'], tools: []
+  },
+  {
     id: 'cognitive-processing', version: '1.0', description: 'N02 cognitive processing services',
     request: true, response: true, events: true, owner: 'N02', context: ['request', 'conversation'], tools: []
   },
