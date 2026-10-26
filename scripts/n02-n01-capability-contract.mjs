@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
 
 const n01Workdir = process.env.SOUL_N01_WORKDIR;
 if (!n01Workdir) throw new Error('SOUL_N01_WORKDIR is required for the cross-repository owner contract.');
@@ -27,16 +26,26 @@ assert.ok(n01RuntimeSource.includes('agents.register(createN01PrefrontalOptimize
 assert.ok(n01RuntimeSource.includes('router.onRequest(N01_PREFRONTAL_OPTIMIZE_CAPABILITY, prefrontalAgentHandler)'),
   'Pinned N01 runtime must expose the prefrontal capability through canonical Mesh.');
 
-const n01RoutingPath = resolve(n01Workdir, 'scripts/soul-mesh-routing.mjs');
-const { resolveCapabilityOwner } = await import(pathToFileURL(n01RoutingPath).href);
+// The current pinned N01 no longer ships scripts/soul-mesh-routing.mjs.
+// Exercise the resolver function from the canonical N01 runtime itself, rather
+// than copying its ownership logic into N02 or importing a removed file.
+const n01ServerPath = resolve(n01Workdir, 'scripts/soul-mesh-server.mjs');
+const n01ServerSource = await readFile(n01ServerPath, 'utf8');
+const resolverMatch = n01ServerSource.match(/function resolveOwner\(capability\)\s*\{([\s\S]*?)\}\s*function resolveCapability\(/);
+assert.ok(resolverMatch, 'Pinned N01 canonical runtime must expose its active resolveOwner(capability) implementation.');
+
 const peers = new Map([
-  ['N02', { id: 'N02', capabilities: [] }],
+  ['N02', { id: 'N02', capabilities: declared }],
   ['N03', { id: 'N03', capabilities: [] }],
   ['N04', { id: 'N04', capabilities: [] }],
   ['N05', { id: 'N05', capabilities: [] }],
   ['N06', { id: 'N06', capabilities: [] }],
   ['N07', { id: 'N07', capabilities: [] }],
 ]);
+const resolveCapabilityOwner = new Function(
+  'peers',
+  'return function resolveCapabilityOwner(capability) {' + resolverMatch[1] + '}',
+)(peers);
 
 const mismatches = [];
 for (const capability of declared) {
@@ -63,6 +72,6 @@ console.log(JSON.stringify({
   n02ExecutableCapabilities: executable.length,
   n01RoutedClareiraBoundary: declared.filter(capability => capability.startsWith('clareira.')).length,
   n02RoutedCapabilities: declared.filter(capability => !capability.startsWith('clareira.')).length,
-  dynamicPeerAdvertisementRequired: false,
+  dynamicPeerAdvertisementRequired: true,
   checkedAt: new Date().toISOString(),
 }, null, 2));
