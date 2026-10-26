@@ -1,7 +1,7 @@
 name: Soul Mesh CI
 on:
   push:
-    branches: [ main ]
+    branches: [ main, fix/n02-mesh-contract-checkout-20261026 ]
   pull_request:
   workflow_dispatch:
 permissions:
