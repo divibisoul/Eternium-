@@ -11,6 +11,22 @@ const manifestSource = await readFile(n02ManifestPath, 'utf8');
 const declared = [...manifestSource.matchAll(/\bid:\s*'([^']+)'[^}]*owner:\s*'N02'/g)].map(match => match[1]);
 if (declared.length < 40) throw new Error('N02 capability manifest parse is incomplete: found ' + declared.length);
 
+const n01PrefrontalAgentPath = resolve(n01Workdir, 'src/soul-fusion/N01PrefrontalAgent.ts');
+const n01RuntimePath = resolve(n01Workdir, 'src/core/mesh/SoulMeshRuntime.ts');
+const [n01PrefrontalAgentSource, n01RuntimeSource] = await Promise.all([
+  readFile(n01PrefrontalAgentPath, 'utf8'),
+  readFile(n01RuntimePath, 'utf8'),
+]);
+const n01PrefrontalCapability = 'neural.prefrontal.optimize@1.0.0';
+assert.ok(n01PrefrontalAgentSource.includes('N01.neocortex-prefrontal-optimizer'),
+  'Pinned N01 source must contain the native prefrontal optimizer.');
+assert.ok(n01PrefrontalAgentSource.includes(n01PrefrontalCapability),
+  'Pinned N01 source must declare the prefrontal capability.');
+assert.ok(n01RuntimeSource.includes('agents.register(createN01PrefrontalOptimizerAgent())'),
+  'Pinned N01 runtime must register the prefrontal agent in the native registry.');
+assert.ok(n01RuntimeSource.includes('router.onRequest(N01_PREFRONTAL_OPTIMIZE_CAPABILITY, prefrontalAgentHandler)'),
+  'Pinned N01 runtime must expose the prefrontal capability through canonical Mesh.');
+
 const n01RoutingPath = resolve(n01Workdir, 'scripts/soul-mesh-routing.mjs');
 const { resolveCapabilityOwner } = await import(pathToFileURL(n01RoutingPath).href);
 const peers = new Map([

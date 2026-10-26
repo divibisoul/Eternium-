@@ -138,6 +138,55 @@ try {
     throw new Error('Authenticated bidirectional N01↔N02 runtime route failed: ' + JSON.stringify(roundTrip));
   }
 
+  // Verify the pinned N01 candidate exposes the native prefrontal optimizer over
+  // the same authenticated Mesh protocol used by the actual N02 peer client.
+  const previousPeerUrl = process.env.SOUL_MESH_N01_URL;
+  const previousHmacSecret = process.env.SOUL_MESH_HMAC_SECRET;
+  process.env.SOUL_MESH_N01_URL = n01Url + '/api/soul-mesh';
+  process.env.SOUL_MESH_HMAC_SECRET = sharedTestSecret;
+  let prefrontalResponse;
+  try {
+    const { requestPeerCapability } = await import('../api/soul-mesh/peer-client.ts');
+    prefrontalResponse = await requestPeerCapability(
+      'N01',
+      'neural.prefrontal.optimize@1.0.0',
+      {
+        goalId: 'n02-process-pair.prefrontal',
+        description: 'Verify prefrontal optimization through authenticated N01 Mesh',
+        weakPoint: 'mesh trace correlation retry idempotency',
+        priority: 0.9,
+        context: { source: 'N02-real-process-e2e', additiveOnly: true },
+      },
+      20_000,
+    );
+  } finally {
+    if (previousPeerUrl === undefined) delete process.env.SOUL_MESH_N01_URL;
+    else process.env.SOUL_MESH_N01_URL = previousPeerUrl;
+    if (previousHmacSecret === undefined) delete process.env.SOUL_MESH_HMAC_SECRET;
+    else process.env.SOUL_MESH_HMAC_SECRET = previousHmacSecret;
+  }
+  const prefrontal = prefrontalResponse?.payload;
+  if (prefrontalResponse?.source !== 'N01' || prefrontalResponse?.target !== 'N02'
+    || prefrontalResponse?.kind !== 'response'
+    || prefrontalResponse?.capability !== 'neural.prefrontal.optimize@1.0.0'
+    || !prefrontalResponse?.correlationId
+    || prefrontal?.status !== 'completed'
+    || prefrontal?.agentId !== 'N01.neocortex-prefrontal-optimizer'
+    || prefrontal?.correlationId !== prefrontalResponse.correlationId
+    || prefrontal?.traceId !== prefrontalResponse.correlationId
+    || prefrontal?.decision?.inhibited !== false
+    || prefrontal?.decision?.selectedNucleus !== 'N01'
+    || prefrontal?.execution?.nucleus !== 'N01'
+    || prefrontal?.execution?.backend !== 'IN_PROCESS'
+    || !Number.isFinite(prefrontal?.execution?.latencyMs)
+    || !Array.isArray(prefrontal?.optimization?.actions)
+    || !prefrontal.optimization.actions.some(action => action.id === 'preserve-correlation')) {
+    throw new Error('Authenticated N02→N01 prefrontal-agent E2E failed: ' + JSON.stringify({
+      response: prefrontalResponse,
+      prefrontal,
+    }));
+  }
+
   // Legacy v1 envelope compatibility: authenticate a request arriving through N01's
   // preserved legacy surface, require it to translate into the real modern N02 route,
   // and validate the legacy response HMAC rather than treating HTTP 200 as sufficient.

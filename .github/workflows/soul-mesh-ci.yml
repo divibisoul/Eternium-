@@ -16,10 +16,10 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: divibisoul/aeternum-core-29
-          ref: d6164048798945f2ab7ccffd4f91454ebb02fc8f
+          ref: ba34ba9ed1bc66e7db6e67affe44d5acd0632699
           path: .integration/n01
       - name: Verify exact N01 integration candidate
-        run: test "$(git -C .integration/n01 rev-parse HEAD)" = "d6164048798945f2ab7ccffd4f91454ebb02fc8f"
+        run: test "$(git -C .integration/n01 rev-parse HEAD)" = "ba34ba9ed1bc66e7db6e67affe44d5acd0632699"
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -33,7 +33,7 @@ jobs:
       - name: N01↔N02 authenticated real-process E2E
         env:
           SOUL_N01_WORKDIR: ${{ github.workspace }}/.integration/n01
-        run: node scripts/n02-n01-runtime-e2e.mjs
+        run: node --experimental-transform-types --loader ./scripts/n02-ts-extension-loader.mjs scripts/n02-n01-runtime-e2e.mjs
       - name: Typecheck Mesh adapter
         run: npx tsc -p tsconfig.mesh.json --noEmit
       - name: Gemini reliability tests
